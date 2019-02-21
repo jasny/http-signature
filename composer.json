@@ -15,7 +15,10 @@
         "source": "https://github.com/legalthings/http-signature"
     },
     "require": {
-        "php": ">=7.2.0"
+        "php": ">=7.2.0",
+        "improved/improved": "^1.0",
+        "nesbot/carbon": "^2.12",
+        "psr/http-message": "^1.0"
     },
     "require-dev": {
         "jasny/php-code-quality": "^2.3"

@@ -1,22 +1,6 @@
 # How to contribute
 
-Thanks for taking the time to contribute.
-
-Please read this guide to better understand the project.
-
-## Project structure
-
-| directory    |                                               |
-|--------------|-----------------------------------------------|
-| bin          | Commandline scripts and tools                 |
-| config       | Application configuration                     |
-| controller   | Controller classes to handle (HTTP) requests  |
-| declarations | Service declarations for dependency injection |
-| lib          | Non-app specific services and other classes   |
-| models       | Objects that are represented in the database  |
-| services     | App specific services                         |
-| tests        | Automated tests                               |
-| www          | Webserver document root                       |
+Thanks for taking the time to contribute. Please read this guide to better understand the project.
 
 ## Code quality
 
@@ -69,57 +53,19 @@ the level of abstraction you may expect from a high level language.
 Rather than using these functions directly, use an abstraction library that provides a consistent interface, does type
 checking and throws exceptions.
 
+#### Improved PHP library
+
 The project uses the [Improved PHP library](https://github.com/improved-php-library) for rudimentary functions as
 manipulating strings and arrays.
 
-### Immutable services
+#### Carbon
 
-Services are constructed as immutable objects. This means there are not `setter` methods or other methods that somehow
-changes the state of a service. Services may implement `with` methods, which creates a new copy of the service.
-
-Mutable services can cause issues that are difficult to reproduce.
+For dates and timestamps, using [`CarbonImmutable`](https://carbon.nesbot.com/) rather than the native `DateTime`
+objects. Carbon makes it easier to test time related functions. Immutable value objects prevent unexpected side-effects.  
 
 ## Tests
 
-Test use the [Codeception test framework](https://codeception.com/). The project contains unit and api tests. Code in
-the controllers is only covered by the api tests.
+Test use the [PHPUnit test framework](https://phpunit.de/). Source code should have 100% test coverage.
 
-    bin/codecept run
-
-To run only a single test use
-
-    bin/codecept run api Default/100-InfoCept
-
-For more options see the [Codeception docs on 'run'](https://codeception.com/docs/reference/Commands#run).
-
-Services should have 100% test coverage.
-
-### HTTP Mock
-
-External services MUST be mocked. For api tests use `$I->expectHttpRequest()` to mock and assert external http calls
-done by Guzzle.
-
-```php
-$I->expectHttpRequest(function (Request $request) use ($I) {
-    $I->assertEquals('http://example.com', (string)$request->getUri());
-    $I->assertEquals('application/json', $request->getHeaderLine('Content-Type'));
-
-    $I->assertJsonStringEqualsJsonString('{"foo": "bar"}', (string)$request->getBody());
-    
-    return new Response(200);
-});
-```
-
-## Pull request
-
-Create a new branch for your feature and add a pull request. It's not possible to commit and push to the `master`
-branch.
-
-Each pull request is automatically checked by [Scrutinizer](https://scrutinizer-ci.com/), which does static code
-analysis and style checks, and [Travis](https://travis-ci.com/), which runs automated tests.
-
-While running QA on your local machine might succeed, Scrutinizer might still fail if it detects a reduction in code
-quality. This may be caused with trying to commit code that isn't properly tested or low in quality. 
-
-Each pull request is manually checked by a project member. As such, make sure the PR is small enough to be checked.
-Break a big change up in smaller chunks if needed.
+In rare cases, code may be excluded from test coverage using `@codeCoverageIgnore`. Please include a comment explaining
+why the code is excluded.
