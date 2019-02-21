@@ -1,7 +1,8 @@
 <?php
 
-namespace LTO\HTTPSignature;
+namespace LTO\HTTPSignature\Tests;
 
+use LTO\HTTPSignature\HTTPSignature;
 use Improved\IteratorPipeline\Pipeline;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
