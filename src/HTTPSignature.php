@@ -21,10 +21,12 @@ class HTTPSignature
     protected $clockSkew = 300;
 
     /**
-     * Headers required / used in message.
-     * @var string[]
+     * Headers required / used in message per request method.
+     * @var array
      */
-    protected $requiredHeaders = ['date'];
+    protected $requiredHeaders = [
+        'default' => ['(request-target)', 'date'],
+    ];
 
     /**
      * Supported algorithms
@@ -100,21 +102,24 @@ class HTTPSignature
     /**
      * Set the required headers for the signature message.
      *
-     * @param array $headers
-     * @return $this|HTTPSignature
+     * @param string $method   HTTP Request method or 'default'
+     * @param array  $headers
+     * @return static
      */
-    public function withRequiredHeaders(array $headers)
+    public function withRequiredHeaders(string $method, array $headers)
     {
+        $method = strtolower($method);
+
         $headers = Pipeline::with($headers)
             ->map(i\function_partial('strtolower', __))
             ->toArray();
 
-        if ($this->requiredHeaders === $headers) {
+        if (isset($this->requiredHeaders[$method]) && $this->requiredHeaders[$method] === $headers) {
             return $this;
         }
 
         $clone = clone $this;
-        $clone->requiredHeaders = $headers;
+        $clone->requiredHeaders[$method] = $headers;
 
         return $clone;
     }
@@ -122,11 +127,14 @@ class HTTPSignature
     /**
      * Get the required headers for the signature message.
      *
+     * @param string $method
      * @return string[]
      */
-    public function getRequiredHeaders(): array
+    public function getRequiredHeaders(string $method): array
     {
-        return $this->requiredHeaders;
+        $method = strtolower($method);
+
+        return $this->requiredHeaders[$method] ?? $this->requiredHeaders['default'];
     }
 
 
@@ -141,8 +149,9 @@ class HTTPSignature
         $params = $this->getParams($request);
         $this->assertParams($params);
 
+        $method = $request->getMethod();
         $headers = isset($params['headers']) ? explode(' ', $params['headers']) : [];
-        $this->assertRequiredHeaders($headers);
+        $this->assertRequiredHeaders($method, $headers);
 
         $this->assertSignatureAge($request);
 
@@ -167,10 +176,12 @@ class HTTPSignature
      */
     public function sign(Request $request, string $algorithm, string $keyId): Request
     {
+        $method = $request->getMethod();
+
         $params = [
             'keyId' => $keyId,
             'algorithm' => $algorithm,
-            'headers' => join(' ', $this->getRequiredHeaders())
+            'headers' => join(' ', $this->getRequiredHeaders($method))
         ];
 
         if (!$request->hasHeader('Date')) {
@@ -178,7 +189,7 @@ class HTTPSignature
             $request = $request->withHeader('Date', $date);
         }
 
-        $rawSignature = ($this->sign)($this->getMessage(), $keyId, $algorithm);
+        $rawSignature = i\type_check(($this->sign)($this->getMessage(), $keyId, $algorithm), 'string');
         $signature = base64_encode($rawSignature);
 
         $args = [$params['keyId'], $params['algorithm'], $params['headers'], $signature];
@@ -219,17 +230,18 @@ class HTTPSignature
     /**
      * Assert that required headers are present
      *
+     * @param string   $method
      * @param string[] $headers
      * @throws HTTPSignatureException
      */
-    protected function assertRequiredHeaders(array $headers): void
+    protected function assertRequiredHeaders(string $method, array $headers): void
     {
         if (in_array('x-date', $headers)) {
             $key = array_search('x-date', $headers, true);
             $headers[$key] = 'date';
         }
 
-        $missing = array_diff($this->requiredHeaders, $headers);
+        $missing = array_diff($this->getRequiredHeaders($method), $headers);
 
         if (!empty($missing)) {
             $err = sprintf("%s %s not part of signature", join(', ', $missing), count($missing) === 1 ? 'is' : 'are');

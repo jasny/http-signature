@@ -110,17 +110,20 @@ class HTTPSignatureTest extends TestCase
     {
         $service = new HTTPSignature([], function() {}, function() {});
 
-        $this->assertEquals(['date'], $service->getRequiredHeaders());
+        $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('get'));
+        $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('post'));
 
-        $this->assertSame($service, $service->withRequiredHeaders(['date'])); // Unchanged
+        $this->assertSame($service, $service->withRequiredHeaders('default', ['(request-target)', 'date']));
 
-        $modifiedService = $service->withRequiredHeaders(['(request-target)', 'date', 'digest', 'content-length']);
+        $modified = $service
+            ->withRequiredHeaders('default', ['(request-target)', 'date', 'x-custom'])
+            ->withRequiredHeaders('POST', ['(request-target)', 'date', 'digest']);
 
-        $this->assertInstanceOf(HTTPSignature::class, $modifiedService);
-        $this->assertNotSame($service, $modifiedService);
+        $this->assertInstanceOf(HTTPSignature::class, $modified);
+        $this->assertNotSame($service, $modified);
 
-        $expected = ['(request-target)', 'date', 'digest', 'content-length'];
-        $this->assertEquals($expected, $modifiedService->getRequiredHeaders());
+        $this->assertEquals(['(request-target)', 'date', 'x-custom'], $modified->getRequiredHeaders('GET'));
+        $this->assertEquals(['(request-target)', 'date', 'digest'], $modified->getRequiredHeaders('POST'));
     }
 
     public function dateHeaderProvider()
@@ -411,7 +414,7 @@ class HTTPSignatureTest extends TestCase
         $request = $this->createMockRequest('GET', $url, $params, $headers);
 
         $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
-            ->withRequiredHeaders($requiredHeaders);
+            ->withRequiredHeaders('default', $requiredHeaders);
 
         $service->verify($request);
     }
@@ -445,7 +448,7 @@ class HTTPSignatureTest extends TestCase
         $verify = $this->createCallbackMock($this->once(), $expectedArgs, true);
 
         $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
-            ->withRequiredHeaders([]);
+            ->withRequiredHeaders('default', []);
 
         $service->verify($request);
     }

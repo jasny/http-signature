@@ -19,4 +19,99 @@ Installation
 Usage
 ---
 
+When creating the `HttpSignature` service, pass a list of supported algorithms, a callback to sign request and a
+callback to verify signatures.
 
+```php
+use LTO/HttpSignature/HttpSignature;
+
+$keys = [
+  'hmac-key-1' => 'secret',
+  'hmac-key-2' => 'god',
+];
+
+$service = new HttpSignature(
+    ['hmac-sha256'],
+    function (string $message, string $keyId) use ($keys): string {
+        if (!isset($keys[$keyId])) {
+            throw new OutOfBoundsException("Unknown sign key '$keyId'");
+        }
+    
+        $key = $keys[$keyId];
+        return hash_hmac('sha256', $message, $key, true);
+    },
+    function (string $message, string $signature, string $keyId) use ($keys): bool {
+        if (!isset($keys[$keyId])) {
+            return false;        
+        }
+    
+        $key = $keys[$keyId];
+        $expected = hash_hmac('sha256', $message, $key, true);
+        
+        return hash_equals($expected, $signature);
+    }
+);
+```
+
+The used algorithm is passed as extra parameter, allowing support for multiple algorithms.
+
+### Signing request
+
+You can use the service to sign a PSR-7 Request.
+
+```php
+$request = new Request(); // Any PSR-7 compatible Request object
+$signedRequest = $service->sign($request);
+```
+
+### Verifying requests
+
+You can use the service to verify the signature of a signed a PSR-7 Request.
+
+```php
+$request = new Request(); // Any PSR-7 compatible Request object
+$service->verify($receivedRequest);
+```
+
+If the request is not signed, the signature is invalid, or the request doesn't meet the requirements, an
+`HttpSignatureException is throws`. 
+
+### Configuring the service
+
+#### Required headers
+
+By default, the request target (includes the HTTP method, URL path and query parameters) and the `Date` header are
+required for all types of requests.
+
+```php
+$service = $service->withRequiredHeaders('POST', ['(request-target)', 'date', 'content-type', 'digest']);
+```
+
+The required headers can be specified per request method or as `default`.
+
+#### Date header
+
+If a `Date` header is specified, the service will check the age of the request. If it's signed to long ago an exception
+is thrown. By default a request may not be more than 300 seconds (5 minutes) old.
+
+The time between signing a request and verifying it, may be due to latency or the system clock of client and/or server
+might be off.
+
+The time that is allowed can be configured as clock skew;
+
+```php
+$service = $service->withClockSkew(1800); // Accept requests up to 30 minutes old
+```
+
+#### X-Date header
+
+Browsers automatically set the `Date` header for AJAX requests. This makes it impossible to use this for the signature.
+As solution, an `X-Date` header may be used that supersedes the `Date` header.
+
+### Server middleware
+
+_TODO_
+
+### Client middleware
+
+_TODO_
