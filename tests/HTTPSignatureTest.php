@@ -18,7 +18,7 @@ class HTTPSignatureTest extends TestCase
 
     public function setUp()
     {
-        CarbonImmutable::setTestNow(CarbonImmutable::createFromTimeString('Tue, 07 Jun 2014 20:51:35 GMT'));
+        CarbonImmutable::setTestNow(CarbonImmutable::createFromTimeString('Sat, 22 Aug 1981 20:51:35 +0000'));
     }
 
     /**
@@ -42,13 +42,13 @@ class HTTPSignatureTest extends TestCase
     /**
      * Create a mock Request object.
      *
-     * @param string   $method
-     * @param string   $url
-     * @param string[] $params
-     * @param string[] $headers
+     * @param string        $method
+     * @param string        $url
+     * @param string[]|null $params
+     * @param string[]      $headers
      * @return Request&MockObject
      */
-    protected function createMockRequest(string $method, string $url, array $params, array $headers): MockObject
+    protected function createMockRequest(string $method, string $url, array $headers, ?array $params = null): MockObject
     {
         $request = $this->createMock(Request::class);
 
@@ -57,42 +57,65 @@ class HTTPSignatureTest extends TestCase
         $uri = $this->createUri($url);
         $request->expects($this->any())->method('getUri')->willReturn($uri);
 
-        $paramString = Pipeline::with($params)
-            ->map(function(string $value, string $key) {
-                return sprintf('%s="%s"', $key, addcslashes($value, '"'));
-            })
-            ->concat(",");
-
         $headers = array_change_key_case($headers, CASE_LOWER);
-        $headers['authorization'] = "Signature $paramString";
+
+        if ($params !== null) {
+            $paramString = Pipeline::with($params)
+                ->map(function(string $value, string $key) {
+                    return sprintf('%s="%s"', $key, addcslashes($value, '"'));
+                })
+                ->concat(",");
+
+            $headers['authorization'] = "Signature $paramString";
+        }
 
         $request->expects($this->any())->method('hasHeader')
             ->willReturnCallback(function($key) use ($headers) {
-                return isset($headers[$key]);
+                return isset($headers[strtolower($key)]);
             });
 
         $request->expects($this->any())->method('getHeaderLine')
             ->willReturnCallback(function($key) use ($headers) {
-                if (!isset($headers[$key])) {
+                if (!isset($headers[strtolower($key)])) {
                     throw new \OutOfBoundsException("Header '$key' not specified in mock request");
                 }
 
-                return $headers[$key];
+                return $headers[strtolower($key)];
             });
 
         return $request;
     }
 
-    public function testGetSupportedAlgorithms()
+    public function algorithmProvider()
     {
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
+        return [
+            ['ed25519'],
+            [['ed25519', 'ed25519-sha256']],
+        ];
+    }
 
-        $this->assertEquals(['ed25519', 'ed25519-sha256'], $service->getSupportedAlgorithms());
+    /**
+     * @dataProvider algorithmProvider
+     */
+    public function testGetSupportedAlgorithms($algoritm)
+    {
+        $service = new HTTPSignature($algoritm, function() {}, function() {});
+
+        $this->assertEquals((array)$algoritm, $service->getSupportedAlgorithms());
+    }
+
+    /**
+     * @expectedException InvalidArgumentException
+     * @expectedExceptionMessage No supported algorithms specified
+     */
+    public function testAssertSupportAlgorithms()
+    {
+        new HTTPSignature([], function() {}, function() {});
     }
 
     public function testGetAndSetClockSkew()
     {
-        $service = new HTTPSignature([], function() {}, function() {});
+        $service = new HTTPSignature('hmac-sha256', function() {}, function() {});
 
         $this->assertEquals(300, $service->getClockSkew());
 
@@ -108,7 +131,7 @@ class HTTPSignatureTest extends TestCase
 
     public function testGetAndSetRequiredHeaders()
     {
-        $service = new HTTPSignature([], function() {}, function() {});
+        $service = new HTTPSignature('hmac-sha256', function() {}, function() {});
 
         $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('get'));
         $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('post'));
@@ -145,7 +168,7 @@ class HTTPSignatureTest extends TestCase
         $signature = 'PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==';
 
         $url = '/foos?a=1';
-        $headers = [$dateHeaderName => 'Tue, 07 Jun 2014 20:52:00 GMT'];
+        $headers = [$dateHeaderName => 'Sat, 22 Aug 1981 20:52:00 +0000'];
         $params = [
             'keyId' => $publicKey,
             'algorithm' => 'ed25519-sha256',
@@ -155,10 +178,10 @@ class HTTPSignatureTest extends TestCase
 
         $expectedMessage = join("\n", [
             '(request-target): get /foos?a=1',
-            strtolower($dateHeaderName) . ': Tue, 07 Jun 2014 20:52:00 GMT'
+            strtolower($dateHeaderName) . ': Sat, 22 Aug 1981 20:52:00 +0000'
         ]);
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $expectedArgs = [
             $expectedMessage,
@@ -185,7 +208,7 @@ class HTTPSignatureTest extends TestCase
 
         $url = '/foo';
         $headers = [
-            $dateHeaderName => 'Tue, 07 Jun 2014 20:52:00 GMT',
+            $dateHeaderName => 'Sat, 22 Aug 1981 20:52:00 +0000',
             'Digest' => 'SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=',
             'Content-Length' => 18,
         ];
@@ -198,12 +221,12 @@ class HTTPSignatureTest extends TestCase
 
         $expectedMessage = join("\n", [
             '(request-target): post /foo',
-            strtolower($dateHeaderName) . ': Tue, 07 Jun 2014 20:52:00 GMT',
+            strtolower($dateHeaderName) . ': Sat, 22 Aug 1981 20:52:00 +0000',
             'digest: SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=',
             'content-length: 18'
         ]);
 
-        $request = $this->createMockRequest('POST', $url, $params, $headers);
+        $request = $this->createMockRequest('POST', $url, $headers, $params);
 
         $expectedArgs = [
             $expectedMessage,
@@ -290,7 +313,7 @@ class HTTPSignatureTest extends TestCase
      *
      * @expectedException \LTO\HTTPSignature\HTTPSignatureException
      */
-    public function testVerifyWithMissingKey($missingKey)
+    public function testVerifyWithMissingKey(string $missingKey)
     {
         $sign = $this->createCallbackMock($this->never());
         $verify = $this->createCallbackMock($this->never());
@@ -298,7 +321,7 @@ class HTTPSignatureTest extends TestCase
         $this->expectExceptionMessage($missingKey . ' not specified in Authorization header');
 
         $url = '/foos?a=1';
-        $headers = ['date' => 'Tue, 07 Jun 2014 20:52:00 GMT'];
+        $headers = ['date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
         $params = [
             'keyId' => 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG',
             'algorithm' => 'ed25519-sha256',
@@ -308,7 +331,7 @@ class HTTPSignatureTest extends TestCase
 
         unset($params[$missingKey]);
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
@@ -325,7 +348,7 @@ class HTTPSignatureTest extends TestCase
         $verify = $this->createCallbackMock($this->never());
 
         $url = '/foos?a=1';
-        $headers = ['date' => 'Tue, 07 Jun 2014 20:52:00 GMT'];
+        $headers = ['date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
         $params = [
             'keyId' => 'secret',
             'algorithm' => 'hmac-sha256',
@@ -333,7 +356,7 @@ class HTTPSignatureTest extends TestCase
             'signature' => '+eZuF5tnR65UEI+C+K3os8Jddv0wr95sOVgixTAZYWk=',
         ];
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
@@ -352,7 +375,7 @@ class HTTPSignatureTest extends TestCase
         $signature = 'aW52YWxpZA==';
 
         $url = '/foos?a=1';
-        $headers = ['date' => 'Tue, 07 Jun 2014 20:52:00 GMT'];
+        $headers = ['date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
         $params = [
             'keyId' => $publicKey,
             'algorithm' => 'ed25519-sha256',
@@ -362,10 +385,10 @@ class HTTPSignatureTest extends TestCase
 
         $expectedMessage = join("\n", [
             '(request-target): get /foos?a=1',
-            'date: Tue, 07 Jun 2014 20:52:00 GMT'
+            'date: Sat, 22 Aug 1981 20:52:00 +0000'
         ]);
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $expectedArgs = [
             $expectedMessage,
@@ -403,7 +426,7 @@ class HTTPSignatureTest extends TestCase
         $signature = 'PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==';
 
         $url = '/foos?a=1';
-        $headers = ['Date' => 'Tue, 07 Jun 2014 20:52:00 GMT'];
+        $headers = ['Date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
         $params = [
             'keyId' => $publicKey,
             'algorithm' => 'ed25519-sha256',
@@ -411,7 +434,7 @@ class HTTPSignatureTest extends TestCase
             'signature' => $signature,
         ];
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
             ->withRequiredHeaders('default', $requiredHeaders);
@@ -437,7 +460,7 @@ class HTTPSignatureTest extends TestCase
 
         $expectedMessage = '(request-target): get /foos?a=1';
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
         $expectedArgs = [
             $expectedMessage,
@@ -455,7 +478,7 @@ class HTTPSignatureTest extends TestCase
 
     /**
      * @expectedException \LTO\HTTPSignature\HTTPSignatureException
-     * @expectedException signature to old or system clocks out of sync
+     * @expectedExceptionMessage signature to old or system clocks out of sync
      */
     public function testVerifyGetRequestWithOldDate()
     {
@@ -466,7 +489,7 @@ class HTTPSignatureTest extends TestCase
         $signature = 'PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==';
 
         $url = '/foos?a=1';
-        $headers = ['Date' => 'Tue, 07 Jun 2014 01:00:00 GMT'];
+        $headers = ['Date' => 'Sat, 22 Aug 1981 01:00:00 +0000'];
         $params = [
             'keyId' => $publicKey,
             'algorithm' => 'ed25519-sha256',
@@ -474,57 +497,216 @@ class HTTPSignatureTest extends TestCase
             'signature' => $signature,
         ];
 
-        $request = $this->createMockRequest('GET', $url, $params, $headers);
+        $request = $this->createMockRequest('GET', $url, $headers, $params);
 
-        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify));
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
 
-    /**
-     */
-    public function testSignGETRequest()
-    {
-        $this->markTestSkipped();
 
-        $msg = join("\n", [
+    /**
+     * @dataProvider dateHeaderProvider
+     */
+    public function testSignGetRequest(string $dateHeaderName)
+    {
+        $verify = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $signature = "PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==";
+
+        $headers = [$dateHeaderName => 'Sat, 22 Aug 1981 20:52:00 +0000'];
+
+        $expectedAuthorizationHeader = join(',', [
+            'keyId="' . $publicKey . '"',
+            'algorithm="ed25519-sha256"',
+            'headers="(request-target) date"',
+            'signature="' . $signature . '"',
+        ]);
+
+        $request = $this->createMockRequest('GET', '/foos?a=1', $headers);
+        $signedRequest = $this->createMock(Request::class);
+
+        $request->expects($this->once())->method('withHeader')
+            ->with('Authorization', 'Signature ' . $expectedAuthorizationHeader)
+            ->willReturn($signedRequest);
+
+        $expectedMessage = join("\n", [
+            "(request-target): get /foos?a=1",
+            strtolower($dateHeaderName) . ": Sat, 22 Aug 1981 20:52:00 +0000"
+        ]);
+
+        $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
+        $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
+
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+
+        $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
+
+        $this->assertSame($signedRequest, $ret);
+    }
+
+    /**
+     * @dataProvider dateHeaderProvider
+     */
+    public function testSignPostRequest(string $dateHeaderName)
+    {
+        $verify = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $signature = "PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==";
+
+        $headers = [
+            $dateHeaderName => 'Sat, 22 Aug 1981 20:52:00 +0000',
+            'Digest' => 'SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=',
+            'Content-Length' => 18,
+        ];
+
+        $expectedAuthorizationHeader = join(',', [
+            'keyId="' . $publicKey . '"',
+            'algorithm="ed25519-sha256"',
+            'headers="(request-target) ' . strtolower($dateHeaderName) . ' digest content-length"',
+            'signature="' . $signature . '"',
+        ]);
+
+        $request = $this->createMockRequest('POST', '/foo', $headers);
+        $signedRequest = $this->createMock(Request::class);
+
+        $request->expects($this->once())->method('withHeader')
+            ->with('Authorization', 'Signature ' . $expectedAuthorizationHeader)
+            ->willReturn($signedRequest);
+
+        $expectedMessage = join("\n", [
             "(request-target): post /foo",
-            "date: Tue, 07 Jun 2014 20:51:35 GMT",
+            strtolower($dateHeaderName) . ": Sat, 22 Aug 1981 20:52:00 +0000",
             "digest: SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=",
             "content-length: 18"
         ]);
-        $hash = "0b50f70b241111e3233c84279697f7d80efae4303b54a8959c1ac68a54fe7736";
+
+        $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
+        $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
+
+        $requiredHeaders = ['(request-target)', strtolower($dateHeaderName), 'digest', 'content-length'];
+
+        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
+            ->withRequiredHeaders('POST', $requiredHeaders);
+
+        $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
+
+        $this->assertSame($signedRequest, $ret);
+    }
+
+    public function testSignGetRequestWithoutDateHeader()
+    {
+        $verify = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
         $signature = "PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==";
 
-        $account = $this->createMock(Account::class);
-        $account->expects($this->once())->method('getPublicSignKey')->with('base64')
-            ->willReturn("2yYhlEGdosg7QZC//hibHiZ1MHk2m7jp/EbUeFdzDis=");
-        $account->expects($this->once())->method('sign')
-            ->with($algorithm === 'ed25519-sha256' ? pack('H*', $hash) : $msg, 'base64')
-            ->willReturn($signature);
+        $headers = ['Date' => 'Sat, 22 Aug 1981 20:51:35 +0000'];
 
-        $request = $this->createMock(Request::class);
-        $request->expects($this->any())->method('hasHeader')->with('date')->willReturn(true);
-        $request->expects($this->any())->method('getHeaderLine')->with('date')
-            ->willReturn("Tue, 07 Jun 2014 20:51:35 GMT");
+        $expectedAuthorizationHeader = join(',', [
+            'keyId="' . $publicKey . '"',
+            'algorithm="ed25519-sha256"',
+            'headers="(request-target) date"',
+            'signature="' . $signature . '"',
+        ]);
+
+        $request = $this->createMockRequest('GET', '/foos?a=1', []);
+        $datedRequest = $this->createMockRequest('GET', '/foos?a=1', $headers);
+        $signedRequest = $this->createMock(Request::class);
+
         $request->expects($this->once())->method('withHeader')
-            ->with('authorization', 'Signature keyId="2yYhlEGdosg7QZC//hibHiZ1MHk2m7jp/EbUeFdzDis=",algorithm="' . $algorithm . '",headers="(request-target) date digest content-length",signature="PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw=="')
-            ->willReturnSelf();
+            ->with('Date', 'Sat, 22 Aug 1981 20:51:35 +0000')
+            ->willReturn($datedRequest);
+        $datedRequest->expects($this->once())->method('withHeader')
+            ->with('Authorization', 'Signature ' . $expectedAuthorizationHeader)
+            ->willReturn($signedRequest);
 
-        $httpSign = $this->createHTTPSignature($request, ['getHeaders', 'getMessage']);
+        $expectedMessage = join("\n", [
+            "(request-target): get /foos?a=1",
+            "date: Sat, 22 Aug 1981 20:51:35 +0000"
+        ]);
 
-        $httpSign->expects($this->once())->method('getHeaders')
-            ->willReturn(["(request-target)", "date", "digest", "content-length"]);
-        $httpSign->expects($this->once())->method('getMessage')->willReturn($msg);
+        $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
+        $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
 
-        $ret = $httpSign->signWith($account, $algorithm);
-        $this->assertSame($request, $ret);
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
-        $this->assertSame($account, $httpSign->getAccount());
-        $this->assertEquals([
-            'keyId' => "2yYhlEGdosg7QZC//hibHiZ1MHk2m7jp/EbUeFdzDis=",
-            'algorithm' => $algorithm,
-            'headers' => "(request-target) date digest content-length"
-        ], $httpSign->getParams());
+        $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
+
+        $this->assertSame($signedRequest, $ret);
+    }
+
+    public function testSignGetRequestWithImplicitAlgorithm()
+    {
+        $verify = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $signature = "PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==";
+
+        $headers = ['date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
+
+        $expectedAuthorizationHeader = join(',', [
+            'keyId="' . $publicKey . '"',
+            'algorithm="ed25519-sha256"',
+            'headers="(request-target) date"',
+            'signature="' . $signature . '"',
+        ]);
+
+        $request = $this->createMockRequest('GET', '/foos?a=1', $headers);
+        $signedRequest = $this->createMock(Request::class);
+
+        $request->expects($this->once())->method('withHeader')
+            ->with('Authorization', 'Signature ' . $expectedAuthorizationHeader)
+            ->willReturn($signedRequest);
+
+        $expectedMessage = join("\n", [
+            "(request-target): get /foos?a=1",
+            "date: Sat, 22 Aug 1981 20:52:00 +0000"
+        ]);
+
+        $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
+        $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
+
+        $service = new HTTPSignature('ed25519-sha256', $sign, $verify);
+
+        $ret = $service->sign($request, $publicKey);
+
+        $this->assertSame($signedRequest, $ret);
+    }
+
+    /**
+     * @expectedException \BadMethodCallException
+     * @expectedExceptionMessage Multiple algorithms available; no algorithm specified
+     */
+    public function testSignGetRequestWithUnspecifiedAlgorithm()
+    {
+        $verify = $this->createCallbackMock($this->never());
+        $sign = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $request = $this->createMock(Request::class);
+
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+
+        $service->sign($request, $publicKey);
+    }
+
+    /**
+     * @expectedException \UnexpectedValueException
+     * @expectedExceptionMessage Unsupported algorithm: hmac-sha256
+     */
+    public function testSignGetRequestWithUnsupportedAlgorithm()
+    {
+        $verify = $this->createCallbackMock($this->never());
+        $sign = $this->createCallbackMock($this->never());
+
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $request = $this->createMock(Request::class);
+
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+
+        $service->sign($request, $publicKey, 'hmac-sha256');
     }
 }

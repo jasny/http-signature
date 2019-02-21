@@ -2,10 +2,10 @@
 
 namespace LTO\HTTPSignature;
 
-use function array_search;
 use Improved as i;
 use Carbon\CarbonImmutable;
 use Improved\IteratorPipeline\Pipeline;
+use InvalidArgumentException;
 use Psr\Http\Message\RequestInterface as Request;
 use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;
 
@@ -50,13 +50,18 @@ class HTTPSignature
     /**
      * Class construction.
      * 
-     * @param string[] $algorithms  Supported algorithms.
-     * @param callable $sign        Function to sign a request.
-     * @param callable $verify      Function to verify a signed request.
+     * @param string|string[] $algorithm  Supported algorithm(s).
+     * @param callable        $sign       Function to sign a request.
+     * @param callable        $verify     Function to verify a signed request.
      */
-    public function __construct(array $algorithms, callable $sign, callable $verify)
+    public function __construct($algorithm, callable $sign, callable $verify)
     {
-        $this->supportedAlgorithms = $algorithms;
+        if (is_array($algorithm) && count($algorithm) === 0) {
+            throw new InvalidArgumentException('No supported algorithms specified');
+        }
+
+        $this->supportedAlgorithms = is_array($algorithm) ? array_values($algorithm) : [$algorithm];
+
         $this->sign = $sign;
         $this->verify = $verify;
     }
@@ -112,6 +117,7 @@ class HTTPSignature
 
         $headers = Pipeline::with($headers)
             ->map(i\function_partial('strtolower', __))
+            ->values()
             ->toArray();
 
         if (isset($this->requiredHeaders[$method]) && $this->requiredHeaders[$method] === $headers) {
@@ -169,33 +175,39 @@ class HTTPSignature
     /**
      * Sign a request.
      *
-     * @param Request  $request
-     * @param string   $algorithm  Signing algorithm
-     * @param string   $keyId      Public key or key reference
+     * @param Request     $request
+     * @param string      $keyId      Public key or key reference
+     * @param string|null $algorithm  Signing algorithm, must be specified if more than one is supported.
      * @return Request
+     * @throws \RuntimeException for an unsupported or unspecified algorithm
      */
-    public function sign(Request $request, string $algorithm, string $keyId): Request
+    public function sign(Request $request, string $keyId, ?string $algorithm = null): Request
     {
         $method = $request->getMethod();
 
         $params = [
             'keyId' => $keyId,
-            'algorithm' => $algorithm,
+            'algorithm' => $this->getSignAlgorithm($algorithm),
             'headers' => join(' ', $this->getRequiredHeaders($method))
         ];
 
-        if (!$request->hasHeader('Date')) {
+        if (!$request->hasHeader('Date') && !$request->hasHeader('X-Date')) {
             $date = CarbonImmutable::now()->format(DATE_RFC1123);
             $request = $request->withHeader('Date', $date);
         }
 
-        $rawSignature = i\type_check(($this->sign)($this->getMessage(), $keyId, $algorithm), 'string');
+        $headers = $this->getSignHeaders($request);
+        $message = $this->getMessage($request, $headers);
+
+        $rawSignature = ($this->sign)($message, $keyId, $params['algorithm']);
+        i\type_check($rawSignature, 'string', new \UnexpectedValueException('Expected %2$s, %1$s given'));
+
         $signature = base64_encode($rawSignature);
 
         $args = [$params['keyId'], $params['algorithm'], $params['headers'], $signature];
         $header = sprintf('Signature keyId="%s",algorithm="%s",headers="%s",signature="%s"', ...$args);
 
-        return $request->withHeader('authorization', $header);
+        return $request->withHeader('Authorization', $header);
     }
 
 
@@ -332,5 +344,44 @@ class HTTPSignature
         if (abs(CarbonImmutable::now()->diffInSeconds($date)) > $this->clockSkew) {
             throw new HTTPSignatureException("signature to old or system clocks out of sync");
         }
+    }
+
+    /**
+     * Get the headers that should be part of the message used to create the signature.
+     *
+     * @param Request $request
+     * @return string[]
+     */
+    protected function getSignHeaders(Request $request): array
+    {
+        $headers = $this->getRequiredHeaders($request->getMethod());
+
+        if (in_array('date', $headers, true) && $request->hasHeader('X-Date')) {
+            $index = array_search('date', $headers, true);
+            $headers[$index] = 'x-date';
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Get the algorithm to sign the request.
+     * Assert that the algorithm is supported.
+     *
+     * @param string|null $algorithm
+     * @return string
+     * @throws \RuntimeException
+     */
+    protected function getSignAlgorithm(?string $algorithm): string
+    {
+        if ($algorithm === null && count($this->supportedAlgorithms) > 1) {
+            throw new \BadMethodCallException(sprintf('Multiple algorithms available; no algorithm specified'));
+        }
+
+        if ($algorithm !== null && !in_array($algorithm, $this->supportedAlgorithms, true)) {
+            throw new \UnexpectedValueException('Unsupported algorithm: ' . $algorithm);
+        }
+
+        return $algorithm ?? $this->supportedAlgorithms[0];
     }
 }

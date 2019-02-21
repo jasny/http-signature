@@ -1,11 +1,11 @@
 HTTP Signature service and middleware (PHP)
 ===
 
-[![Build Status](https://travis-ci.org/legalthings/http-signature.php.svg?branch=master)](https://travis-ci.org/legalthings/http-signature.php)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/legalthings/http-signature.php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature.php/?branch=master)
-[![Code Coverage](https://scrutinizer-ci.com/g/legalthings/http-signature.php/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature.php/?branch=master)
-[![Packagist Stable Version](https://img.shields.io/packagist/v/legalthings/http-signature.php.svg)](https://packagist.org/packages/legalthings/http-signature.php)
-[![Packagist License](https://img.shields.io/packagist/l/legalthings/http-signature.php.svg)](https://packagist.org/packages/legalthings/http-signature.php)
+[![Build Status](https://travis-ci.org/legalthings/http-signature-php.svg?branch=master)](https://travis-ci.org/legalthings/http-signature-php)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/legalthings/http-signature-php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature-php/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/legalthings/http-signature-php/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature-php/?branch=master)
+[![Packagist Stable Version](https://img.shields.io/packagist/v/legalthings/http-signature-php.svg)](https://packagist.org/packages/legalthings/http-signature-php)
+[![Packagist License](https://img.shields.io/packagist/l/legalthings/http-signature-php.svg)](https://packagist.org/packages/legalthings/http-signature-php)
 
 This library provides a service for implementing the [IETF HTTP Signatures draft RFC](https://tools.ietf.org/html/draft-cavage-http-signatures).
 It includes PSR-7 compatible middleware for signing requests (by an HTTP client like Guzzle) and verifying http
@@ -31,7 +31,7 @@ $keys = [
 ];
 
 $service = new HttpSignature(
-    ['hmac-sha256'],
+    'hmac-sha256',
     function (string $message, string $keyId) use ($keys): string {
         if (!isset($keys[$keyId])) {
             throw new OutOfBoundsException("Unknown sign key '$keyId'");
@@ -53,15 +53,13 @@ $service = new HttpSignature(
 );
 ```
 
-The used algorithm is passed as extra parameter, allowing support for multiple algorithms.
-
 ### Signing request
 
 You can use the service to sign a PSR-7 Request.
 
 ```php
 $request = new Request(); // Any PSR-7 compatible Request object
-$signedRequest = $service->sign($request);
+$signedRequest = $service->sign($request, $publicKey);
 ```
 
 ### Verifying requests
@@ -70,13 +68,38 @@ You can use the service to verify the signature of a signed a PSR-7 Request.
 
 ```php
 $request = new Request(); // Any PSR-7 compatible Request object
-$service->verify($receivedRequest);
+$service->verify($request);
 ```
 
 If the request is not signed, the signature is invalid, or the request doesn't meet the requirements, an
-`HttpSignatureException is throws`. 
+`HttpSignatureException` is thrown. 
 
 ### Configuring the service
+
+#### Multiple algorithms
+
+Rather than specifying a single algorithm, an array of supported algorithms may be specified in the constructor. The
+used algorithm is passed as extra parameter to the sign and verify callbacks.
+
+```php
+use LTO/HttpSignature/HttpSignature;
+
+$service = new HttpSignature(
+    ['hmac-sha256', 'rsa', 'rsa-sha256'],
+    function (string $message, string $keyId, string $algorithm): string {
+        // ...
+    },
+    function (string $message, string $signature, string $keyId, string $algorithm): bool {
+        // ...
+    }
+);
+```
+
+When signing, specify the algorithm;
+
+```php
+$signedRequest = $service->sign($request, $publicKey, 'hmac-sha256');
+```
 
 #### Required headers
 
