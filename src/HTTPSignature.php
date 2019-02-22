@@ -3,11 +3,11 @@
 namespace LTO\HTTPSignature;
 
 use Improved as i;
+use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;
+
 use Carbon\CarbonImmutable;
 use Improved\IteratorPipeline\Pipeline;
-use InvalidArgumentException;
 use Psr\Http\Message\RequestInterface as Request;
-use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;
 
 /**
  * Create and verify HTTP Signatures.
@@ -64,6 +64,29 @@ class HTTPSignature
 
         $this->sign = $sign;
         $this->verify = $verify;
+    }
+
+    /**
+     * Create a clone of the service where one of the algorithms is supported.
+     *
+     * @param string $algorithm
+     * @return self
+     * @throw \InvalidArgumentException
+     */
+    public function withAlgorithm(string $algorithm)
+    {
+        if ($this->supportedAlgorithms === [$algorithm]) {
+            return $this;
+        }
+
+        if (!in_array($this->supportedAlgorithms, $algorithm)) {
+            throw new \InvalidArgumentException('Unsupported algorithm: ' . $algorithm);
+        }
+
+        $clone = clone $this;
+        $clone->supportedAlgorithms = [$algorithm];
+
+        return $clone;
     }
 
     /**
@@ -379,7 +402,7 @@ class HTTPSignature
         }
 
         if ($algorithm !== null && !in_array($algorithm, $this->supportedAlgorithms, true)) {
-            throw new \UnexpectedValueException('Unsupported algorithm: ' . $algorithm);
+            throw new \InvalidArgumentException('Unsupported algorithm: ' . $algorithm);
         }
 
         return $algorithm ?? $this->supportedAlgorithms[0];

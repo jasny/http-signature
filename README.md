@@ -59,7 +59,7 @@ You can use the service to sign a PSR-7 Request.
 
 ```php
 $request = new Request(); // Any PSR-7 compatible Request object
-$signedRequest = $service->sign($request, $publicKey);
+$signedRequest = $service->sign($request, $keyId);
 ```
 
 ### Verifying requests
@@ -98,7 +98,14 @@ $service = new HttpSignature(
 When signing, specify the algorithm;
 
 ```php
-$signedRequest = $service->sign($request, $publicKey, 'hmac-sha256');
+$signedRequest = $service->sign($request, $keyId, 'hmac-sha256');
+```
+
+Alternatively you can get a copy of the service with one of the algorithms selected.
+
+```php
+$signService = $service->withAlgorithm('hmac-sha256');
+$signService->sign($request, $keyId);
 ```
 
 #### Required headers
@@ -137,4 +144,97 @@ _TODO_
 
 ### Client middleware
 
-_TODO_
+Client middleware can be used to sign requests send by PSR-7 compatible HTTP clients like
+[Guzzle](http://docs.guzzlephp.org) and [HTTPlug](http://docs.php-http.org).
+
+```php
+use LTO/HttpSignature/HttpSignature;
+use LTO/HttpSignature/ClientMiddleware;
+
+$service = new HttpSignature(/* ... */);
+$middleware = new ClientMiddleware($service, $keyId);
+```
+
+The `$keyId` is used to the `Authorization` header and passed to the sign callback.
+
+If the service supports multiple algorithms you need to use the `withAlgorithm` method to select one. 
+
+```php
+$middleware = new ClientMiddleware($service->withAlgorithm('hmac-sha256'));
+```
+
+#### Double pass middleware
+
+The client middleware can be used by any client that does support double pass middleware. Such middleware are callables
+with the following signature;
+
+```php
+fn(RequestInterface $request, ResponseInterface $response, callable $next): ResponseInterface
+```
+
+Most HTTP clients do not support double pass middleware, but a type of single pass instead. However more general
+purpose PSR-7 middleware libraries, like [Replay](http://relayphp.com/), do support double pass.
+
+```php
+use Relay\RelayBuilder;
+
+$relayBuilder = new RelayBuilder($resolver);
+$relay = $relayBuilder->newInstance([
+    $middleware->asDoublePass()
+]);
+
+$response = $relay($request, $baseResponse);
+```
+
+_The client middleware does not conform to PSR-15 (single pass) as that is intended for server requests only._
+
+#### Guzzle
+
+[Guzzle](http://docs.guzzlephp.org) is the most popular HTTP Client for PHP. The middleware has a `forGuzzle()` method
+that creates a callback which can be used as Guzzle middleware.
+
+```php
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Client;
+use LTO/HttpSignature/HttpSignature;
+use LTO/HttpSignature/ClientMiddleware;
+
+$service = new HttpSignature(/* ... */);
+$middleware = new ClientMiddleware($service, $keyId);
+
+$stack = new HandlerStack();
+$stack->push($middleware->forGuzzle());
+
+$client = new Client(['handler' => $stack]);
+```
+
+When using the middleware for Guzzle, you may pass option `signature_key_id` which will be used instead of `$keyId`.
+_Note that this feature isn't available for double pass and Httplug._
+
+```php
+$client->get('/foo', ['signature_key_id' => $keyId]);
+```
+
+#### HTTPlug
+
+[HTTPlug](http://docs.php-http.org/en/latest/httplug/introduction.html) is the HTTP client of PHP-HTTP. It allows you
+to write reusable libraries and applications that need an HTTP client without binding to a specific implementation.
+
+The `forHttplug()` method for the middleware creates an object that can be used as HTTPlug plugin.
+
+```php
+use Http\Discovery\HttpClientDiscovery;
+use Http\Client\Common\PluginClient;
+use LTO/HttpSignature/HttpSignature;
+use LTO/HttpSignature/ClientMiddleware;
+
+$service = new HttpSignature(/* ... */);
+$middleware = new ClientMiddleware($service, $keyId);
+
+$pluginClient = new PluginClient(
+    HttpClientDiscovery::find(),
+    [
+        $middleware->asHttplugPlugin()
+    ]
+);
+```

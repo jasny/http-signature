@@ -2,11 +2,9 @@
 
 namespace LTO\HTTPSignature;
 
-use RuntimeException;
-
 /**
  * Error with the HTTP Signature
  */
-class HTTPSignatureException extends RuntimeException
+class HTTPSignatureException extends \RuntimeException
 {
 }

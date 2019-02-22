@@ -105,11 +105,33 @@ class HTTPSignatureTest extends TestCase
         $this->assertEquals((array)$algoritm, $service->getSupportedAlgorithms());
     }
 
+    public function testWithAlgorithm()
+    {
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
+
+        $newService = $service->withAlgorithm('ed25519-sha256');
+        $this->assertNotSame($service, $newService);
+        $this->assertEquals(['ed25519-sha256'], $newService->getSupportedAlgorithms());
+
+        $this->assertSame($newService, $newService->withAlgorithm('ed25519-sha256'));
+    }
+
+    /**
+     * @expectedException \InvalidArgumentException
+     * @expectedExceptionMessage Unsupported algorithm: hmac-sha256
+     */
+    public function testWithAlgorithmWithUnsupported()
+    {
+        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
+
+        $service->withAlgorithm('hmac-sha256');
+    }
+
     /**
      * @expectedException InvalidArgumentException
      * @expectedExceptionMessage No supported algorithms specified
      */
-    public function testAssertSupportAlgorithms()
+    public function testWithoutAnyAlgorithmsInConstructor()
     {
         new HTTPSignature([], function() {}, function() {});
     }
@@ -695,7 +717,7 @@ class HTTPSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \UnexpectedValueException
+     * @expectedException \InvalidArgumentException
      * @expectedExceptionMessage Unsupported algorithm: hmac-sha256
      */
     public function testSignGetRequestWithUnsupportedAlgorithm()
