@@ -14,7 +14,7 @@ use Psr\Http\Message\ResponseInterface as Response;
  * Create and verify HTTP Signatures.
  * Only support signatures using the ED25519 algorithm.
  */
-class HTTPSignature
+class HttpSignature
 {
     /**
      * @var int
@@ -173,7 +173,7 @@ class HTTPSignature
      *
      * @param Request $request
      * @return string `keyId` parameter
-     * @throws HTTPSignatureException
+     * @throws HttpSignatureException
      */
     public function verify(Request $request): string
     {
@@ -193,7 +193,7 @@ class HTTPSignature
         $verified = ($this->verify)($message, $signature, $keyId, $params['algorithm'] ?? 'unknown');
 
         if (!$verified) {
-            throw new HTTPSignatureException("invalid signature");
+            throw new HttpSignatureException("invalid signature");
         }
 
         return $params['keyId'];
@@ -263,12 +263,12 @@ class HTTPSignature
      *
      * @param Request $request
      * @return string[]
-     * @throws HTTPSignatureException
+     * @throws HttpSignatureException
      */
     protected function getParams(Request $request): array
     {
         if (!$request->hasHeader('authorization')) {
-            throw new HTTPSignatureException('missing "Authorization" header');
+            throw new HttpSignatureException('missing "Authorization" header');
         }
         
         $auth = $request->getHeaderLine('authorization');
@@ -276,11 +276,11 @@ class HTTPSignature
         list($method, $paramString) = explode(' ', $auth, 2) + [null, null];
         
         if (strtolower($method) !== 'signature') {
-            throw new HTTPSignatureException(sprintf('authorization scheme should be "Signature" not "%s"', $method));
+            throw new HttpSignatureException(sprintf('authorization scheme should be "Signature" not "%s"', $method));
         }
         
         if (!preg_match_all('/(\w+)\s*=\s*"([^"]++)"\s*(,|$)/', $paramString, $matches, PREG_PATTERN_ORDER)) {
-            throw new HTTPSignatureException('corrupt "Authorization" header');
+            throw new HttpSignatureException('corrupt "Authorization" header');
         }
         
         return array_combine($matches[1], $matches[2]);
@@ -291,7 +291,7 @@ class HTTPSignature
      *
      * @param string   $method
      * @param string[] $headers
-     * @throws HTTPSignatureException
+     * @throws HttpSignatureException
      */
     protected function assertRequiredHeaders(string $method, array $headers): void
     {
@@ -304,7 +304,7 @@ class HTTPSignature
 
         if ($missing !== []) {
             $err = sprintf("%s %s not part of signature", join(', ', $missing), count($missing) === 1 ? 'is' : 'are');
-            throw new HTTPSignatureException($err);
+            throw new HttpSignatureException($err);
         }
     }
 
@@ -350,7 +350,7 @@ class HTTPSignature
      * Assert all required parameters are available.
      *
      * @param string[] $params
-     * @throws HTTPSignatureException
+     * @throws HttpSignatureException
      */
     protected function assertParams(array $params): void
     {
@@ -358,12 +358,12 @@ class HTTPSignature
 
         foreach ($required as $param) {
             if (!isset($params[$param])) {
-                throw new HTTPSignatureException("{$param} not specified in Authorization header");
+                throw new HttpSignatureException("{$param} not specified in Authorization header");
             }
         }
 
         if (!in_array($params['algorithm'], $this->supportedAlgorithms, true)) {
-            throw new HTTPSignatureException(sprintf(
+            throw new HttpSignatureException(sprintf(
                 'signed with unsupported algorithm: %s',
                 $params['algorithm']
             ));
@@ -374,7 +374,7 @@ class HTTPSignature
      * Asset that the signature is not to old
      *
      * @param Request $request
-     * @throws HTTPSignatureException
+     * @throws HttpSignatureException
      */
     protected function assertSignatureAge(Request $request): void
     {
@@ -389,7 +389,7 @@ class HTTPSignature
         $date = CarbonImmutable::createFromTimeString($dateString);
 
         if (abs(CarbonImmutable::now()->diffInSeconds($date)) > $this->clockSkew) {
-            throw new HTTPSignatureException("signature to old or system clocks out of sync");
+            throw new HttpSignatureException("signature to old or system clocks out of sync");
         }
     }
 

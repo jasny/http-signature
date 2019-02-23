@@ -3,9 +3,9 @@
 namespace LTO\HttpSignature\Tests;
 
 use Jasny\TestHelper;
-use LTO\HTTPSignature\HTTPSignature;
-use LTO\HTTPSignature\HTTPSignatureException;
-use LTO\HTTPSignature\ServerMiddleware;
+use LTO\HttpSignature\HttpSignature;
+use LTO\HttpSignature\HttpSignatureException;
+use LTO\HttpSignature\ServerMiddleware;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -15,14 +15,14 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * @covers \LTO\HTTPSignature\ServerMiddleware
+ * @covers \LTO\HttpSignature\ServerMiddleware
  */
 class ServerMiddlewareTest extends TestCase
 {
     use TestHelper;
 
     /**
-     * @var HTTPSignature&MockObject
+     * @var HttpSignature&MockObject
      */
     protected $service;
 
@@ -39,7 +39,7 @@ class ServerMiddlewareTest extends TestCase
 
     public function setUp()
     {
-        $this->service = $this->createMock(HTTPSignature::class);
+        $this->service = $this->createMock(HttpSignature::class);
         $this->responseFactory = $this->createMock(ResponseFactoryInterface::class);
 
         $this->middleware = new ServerMiddleware($this->service, $this->responseFactory);
@@ -118,7 +118,7 @@ class ServerMiddlewareTest extends TestCase
         $handler->expects($this->never())->method('handle');
 
         $this->service->expects($this->once())->method('verify')->with($request)
-            ->willThrowException(new HTTPSignatureException('invalid signature'));
+            ->willThrowException(new HttpSignatureException('invalid signature'));
         $this->service->expects($this->atLeastOnce())->method('setAuthenticateResponseHeader')
             ->with('GET', $this->identicalTo($unauthorizedResponse))
             ->willReturn($unauthorizedResponse);
@@ -199,7 +199,7 @@ class ServerMiddlewareTest extends TestCase
         $handler->expects($this->never())->method('handle');
 
         $this->service->expects($this->once())->method('verify')->with($request)
-            ->willThrowException(new HTTPSignatureException('invalid signature'));
+            ->willThrowException(new HttpSignatureException('invalid signature'));
 
         $middleware = new ServerMiddleware($this->service); // No response factory
 
@@ -283,7 +283,7 @@ class ServerMiddlewareTest extends TestCase
         $next = $this->createCallbackMock($this->never());
 
         $this->service->expects($this->once())->method('verify')->with($request)
-            ->willThrowException(new HTTPSignatureException('invalid signature'));
+            ->willThrowException(new HttpSignatureException('invalid signature'));
         $this->service->expects($this->atLeastOnce())->method('setAuthenticateResponseHeader')
             ->with('GET', $this->identicalTo($unauthorizedResponse))
             ->willReturn($unauthorizedResponse);

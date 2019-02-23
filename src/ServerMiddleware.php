@@ -15,7 +15,7 @@ use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 class ServerMiddleware implements MiddlewareInterface
 {
     /**
-     * @var HTTPSignature
+     * @var HttpSignature
      */
     protected $service;
 
@@ -27,10 +27,10 @@ class ServerMiddleware implements MiddlewareInterface
     /**
      * Class constructor.
      *
-     * @param HTTPSignature        $service
+     * @param HttpSignature        $service
      * @param ResponseFactory|null $responseFactory
      */
-    public function __construct(HTTPSignature $service, ?ResponseFactory $responseFactory = null)
+    public function __construct(HttpSignature $service, ?ResponseFactory $responseFactory = null)
     {
         $this->service = $service;
         $this->responseFactory = $responseFactory;
@@ -88,7 +88,7 @@ class ServerMiddleware implements MiddlewareInterface
             $request = $request->withAttribute('signature_key_id', $keyId);
 
             $nextResponse = $next($request, $response);
-        } catch (HTTPSignatureException $exception) {
+        } catch (HttpSignatureException $exception) {
             $nextResponse = $this->createUnauthorizedResponse($request, $response, $exception->getMessage());
         }
 

@@ -2,7 +2,7 @@
 
 namespace LTO\HttpSignature\Tests;
 
-use LTO\HTTPSignature\HTTPSignature;
+use LTO\HttpSignature\HttpSignature;
 use Improved\IteratorPipeline\Pipeline;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -12,9 +12,9 @@ use Psr\Http\Message\UriInterface as Uri;
 use Carbon\CarbonImmutable;
 
 /**
- * @covers \LTO\HTTPSignature\HTTPSignature
+ * @covers \LTO\HttpSignature\HttpSignature
  */
-class HTTPSignatureTest extends TestCase
+class HttpSignatureTest extends TestCase
 {
     use \Jasny\TestHelper;
 
@@ -101,14 +101,14 @@ class HTTPSignatureTest extends TestCase
      */
     public function testGetSupportedAlgorithms($algoritm)
     {
-        $service = new HTTPSignature($algoritm, function() {}, function() {});
+        $service = new HttpSignature($algoritm, function() {}, function() {});
 
         $this->assertEquals((array)$algoritm, $service->getSupportedAlgorithms());
     }
 
     public function testWithAlgorithm()
     {
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
 
         $newService = $service->withAlgorithm('ed25519-sha256');
         $this->assertNotSame($service, $newService);
@@ -123,7 +123,7 @@ class HTTPSignatureTest extends TestCase
      */
     public function testWithAlgorithmWithUnsupported()
     {
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {});
 
         $service->withAlgorithm('hmac-sha256');
     }
@@ -134,12 +134,12 @@ class HTTPSignatureTest extends TestCase
      */
     public function testWithoutAnyAlgorithmsInConstructor()
     {
-        new HTTPSignature([], function() {}, function() {});
+        new HttpSignature([], function() {}, function() {});
     }
 
     public function testGetAndSetClockSkew()
     {
-        $service = new HTTPSignature('hmac-sha256', function() {}, function() {});
+        $service = new HttpSignature('hmac-sha256', function() {}, function() {});
 
         $this->assertEquals(300, $service->getClockSkew());
 
@@ -147,7 +147,7 @@ class HTTPSignatureTest extends TestCase
 
         $modifiedService = $service->withClockSkew(1000);
 
-        $this->assertInstanceOf(HTTPSignature::class, $modifiedService);
+        $this->assertInstanceOf(HttpSignature::class, $modifiedService);
         $this->assertNotSame($service, $modifiedService);
 
         $this->assertEquals(1000, $modifiedService->getClockSkew());
@@ -155,7 +155,7 @@ class HTTPSignatureTest extends TestCase
 
     public function testGetAndSetRequiredHeaders()
     {
-        $service = new HTTPSignature('hmac-sha256', function() {}, function() {});
+        $service = new HttpSignature('hmac-sha256', function() {}, function() {});
 
         $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('get'));
         $this->assertEquals(['(request-target)', 'date'], $service->getRequiredHeaders('post'));
@@ -166,7 +166,7 @@ class HTTPSignatureTest extends TestCase
             ->withRequiredHeaders('default', ['(request-target)', 'date', 'x-custom'])
             ->withRequiredHeaders('POST', ['(request-target)', 'date', 'digest']);
 
-        $this->assertInstanceOf(HTTPSignature::class, $modified);
+        $this->assertInstanceOf(HttpSignature::class, $modified);
         $this->assertNotSame($service, $modified);
 
         $this->assertEquals(['(request-target)', 'date', 'x-custom'], $modified->getRequiredHeaders('GET'));
@@ -215,7 +215,7 @@ class HTTPSignatureTest extends TestCase
         ];
         $verify = $this->createCallbackMock($this->once(), $expectedArgs, true);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $ret = $service->verify($request);
 
@@ -262,7 +262,7 @@ class HTTPSignatureTest extends TestCase
         ];
         $verify = $this->createCallbackMock($this->once(), $expectedArgs, true);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $ret = $service->verify($request);
 
@@ -270,7 +270,7 @@ class HTTPSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage missing "Authorization" header
      */
     public function testVerifyWithoutAuthorizationHeader()
@@ -281,13 +281,13 @@ class HTTPSignatureTest extends TestCase
         $request = $this->createMock(Request::class);
         $request->expects($this->once())->method('hasHeader')->with('authorization')->willReturn(false);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage authorization scheme should be "Signature" not "Basic"
      */
     public function testVerifyWithInvalidAuthorizationMethod()
@@ -301,13 +301,13 @@ class HTTPSignatureTest extends TestCase
             ->with('authorization')
             ->willReturn('Basic YWxhZGRpbjpvcGVuc2VzYW1l');
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage corrupt "Authorization" header
      */
     public function testVerifyWithCorruptAuthorizationHeader()
@@ -321,7 +321,7 @@ class HTTPSignatureTest extends TestCase
             ->with('authorization')
             ->willReturn('Signature hello');
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
@@ -339,7 +339,7 @@ class HTTPSignatureTest extends TestCase
     /**
      * @dataProvider missingKeyProvider
      *
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      */
     public function testVerifyWithMissingKey(string $missingKey)
     {
@@ -361,13 +361,13 @@ class HTTPSignatureTest extends TestCase
 
         $request = $this->createMockRequest('GET', $url, $headers, $params);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage signed with unsupported algorithm: hmac-sha256
      */
     public function testVerifyWithUnsupportedAlgorithm()
@@ -386,13 +386,13 @@ class HTTPSignatureTest extends TestCase
 
         $request = $this->createMockRequest('GET', $url, $headers, $params);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedException invalid signature
      */
     public function testVerifyWithInvalidSignature()
@@ -426,7 +426,7 @@ class HTTPSignatureTest extends TestCase
         ];
         $verify = $this->createCallbackMock($this->once(), $expectedArgs, false);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
@@ -441,7 +441,7 @@ class HTTPSignatureTest extends TestCase
 
     /**
      * @dataProvider missingHeaderProvider
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      */
     public function testVerifyWithMissingHeader(array $requiredHeaders, string $message)
     {
@@ -464,7 +464,7 @@ class HTTPSignatureTest extends TestCase
 
         $request = $this->createMockRequest('GET', $url, $headers, $params);
 
-        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
+        $service = (new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
             ->withRequiredHeaders('default', $requiredHeaders);
 
         $service->verify($request);
@@ -498,14 +498,14 @@ class HTTPSignatureTest extends TestCase
         ];
         $verify = $this->createCallbackMock($this->once(), $expectedArgs, true);
 
-        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
+        $service = (new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
             ->withRequiredHeaders('default', []);
 
         $service->verify($request);
     }
 
     /**
-     * @expectedException \LTO\HTTPSignature\HTTPSignatureException
+     * @expectedException \LTO\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage signature to old or system clocks out of sync
      */
     public function testVerifyGetRequestWithOldDate()
@@ -527,7 +527,7 @@ class HTTPSignatureTest extends TestCase
 
         $request = $this->createMockRequest('GET', $url, $headers, $params);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->verify($request);
     }
@@ -567,7 +567,7 @@ class HTTPSignatureTest extends TestCase
         $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
         $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
 
@@ -616,7 +616,7 @@ class HTTPSignatureTest extends TestCase
 
         $requiredHeaders = ['(request-target)', strtolower($dateHeaderName), 'digest', 'content-length'];
 
-        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
+        $service = (new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
             ->withRequiredHeaders('POST', $requiredHeaders);
 
         $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
@@ -659,7 +659,7 @@ class HTTPSignatureTest extends TestCase
         $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
         $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $ret = $service->sign($request, $publicKey, 'ed25519-sha256');
 
@@ -697,7 +697,7 @@ class HTTPSignatureTest extends TestCase
         $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
         $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
 
-        $service = new HTTPSignature('ed25519-sha256', $sign, $verify);
+        $service = new HttpSignature('ed25519-sha256', $sign, $verify);
 
         $ret = $service->sign($request, $publicKey);
 
@@ -716,7 +716,7 @@ class HTTPSignatureTest extends TestCase
         $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
         $request = $this->createMock(Request::class);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->sign($request, $publicKey);
     }
@@ -733,7 +733,7 @@ class HTTPSignatureTest extends TestCase
         $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
         $request = $this->createMock(Request::class);
 
-        $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
+        $service = new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->sign($request, $publicKey, 'hmac-sha256');
     }
@@ -762,7 +762,7 @@ class HTTPSignatureTest extends TestCase
             )
             ->willReturnSelf();
 
-        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {}))
+        $service = (new HttpSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {}))
             ->withRequiredHeaders('POST', ['(request-target)', 'date', 'digest', 'content-length']);
 
         $service->setAuthenticateResponseHeader($method, $response);

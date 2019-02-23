@@ -13,7 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 class ClientMiddleware
 {
     /**
-     * @var HTTPSignature
+     * @var HttpSignature
      */
     protected $service;
 
@@ -25,10 +25,10 @@ class ClientMiddleware
     /**
      * Class constructor.
      *
-     * @param HTTPSignature $service
+     * @param HttpSignature $service
      * @param string        $keyId    Default key id
      */
-    public function __construct(HTTPSignature $service, string $keyId)
+    public function __construct(HttpSignature $service, string $keyId)
     {
         $this->service = $service;
         $this->keyId = $keyId;

@@ -5,6 +5,6 @@ namespace LTO\HttpSignature;
 /**
  * Error with the HTTP Signature
  */
-class HTTPSignatureException extends \RuntimeException
+class HttpSignatureException extends \RuntimeException
 {
 }

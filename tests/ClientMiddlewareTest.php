@@ -10,22 +10,22 @@ use GuzzleHttp\Promise\Promise as GuzzlePromise;
 use Http\Mock\Client as HttpMockClient;
 use Http\Client\Common\PluginClient as HttpPluginClient;
 use Jasny\TestHelper;
-use LTO\HTTPSignature\ClientMiddleware;
-use LTO\HTTPSignature\HTTPSignature;
+use LTO\HttpSignature\ClientMiddleware;
+use LTO\HttpSignature\HttpSignature;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * @covers \LTO\HTTPSignature\ClientMiddleware
+ * @covers \LTO\HttpSignature\ClientMiddleware
  */
 class ClientMiddlewareTest extends TestCase
 {
     use TestHelper;
 
     /**
-     * @var HTTPSignature&MockObject
+     * @var HttpSignature&MockObject
      */
     protected $service;
 
@@ -37,7 +37,7 @@ class ClientMiddlewareTest extends TestCase
 
     public function setUp()
     {
-        $this->service = $this->createMock(HTTPSignature::class);
+        $this->service = $this->createMock(HttpSignature::class);
         $this->middleware = new ClientMiddleware($this->service, 'key-1');
     }
 
