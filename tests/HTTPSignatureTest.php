@@ -2,11 +2,13 @@
 
 namespace LTO\HTTPSignature\Tests;
 
+use http\Env\Response;
 use LTO\HTTPSignature\HTTPSignature;
 use Improved\IteratorPipeline\Pipeline;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface as Request;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface as Uri;
 use Carbon\CarbonImmutable;
 
@@ -216,7 +218,9 @@ class HTTPSignatureTest extends TestCase
 
         $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
-        $service->verify($request);
+        $ret = $service->verify($request);
+
+        $this->assertEquals($publicKey, $ret);
     }
 
     /**
@@ -261,7 +265,9 @@ class HTTPSignatureTest extends TestCase
 
         $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
-        $service->verify($request);
+        $ret = $service->verify($request);
+
+        $this->assertEquals($publicKey, $ret);
     }
 
     /**
@@ -731,5 +737,35 @@ class HTTPSignatureTest extends TestCase
         $service = new HTTPSignature(['ed25519', 'ed25519-sha256'], $sign, $verify);
 
         $service->sign($request, $publicKey, 'hmac-sha256');
+    }
+
+
+    public function methodProvider()
+    {
+        return [
+            ['GET', ['(request-target)', 'date']],
+            ['POST', ['(request-target)', 'date', 'digest', 'content-length']],
+        ];
+    }
+
+    /**
+     * @dataProvider methodProvider
+     */
+    public function testSetAuthenticateResponseHeaderForGetRequest(string $method, array $expectedHeaders)
+    {
+        $headerString = join(' ', $expectedHeaders);
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->exactly(2))->method('withHeader')
+            ->withConsecutive(
+                ['WWW-Authenticate', sprintf('Signature algorithm="ed25519",headers="%s"', $headerString)],
+                ['WWW-Authenticate', sprintf('Signature algorithm="ed25519-sha256",headers="%s"', $headerString)]
+            )
+            ->willReturnSelf();
+
+        $service = (new HTTPSignature(['ed25519', 'ed25519-sha256'], function() {}, function() {}))
+            ->withRequiredHeaders('POST', ['(request-target)', 'date', 'digest', 'content-length']);
+
+        $service->setAuthenticateResponseHeader($method, $response);
     }
 }

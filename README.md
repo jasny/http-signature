@@ -140,7 +140,83 @@ As solution, an `X-Date` header may be used that supersedes the `Date` header.
 
 ### Server middleware
 
-_TODO_
+Server middleware can be used to verify PSR-7 requests.
+
+If the request is signed but the signature is invalid, the middleware will return a `401 Unauthorized` response and the
+handler will not be called.
+
+#### Single pass middleware (PSR-15)
+
+The middleware implements the PSR-15 `MiddlewareInterface`. As PSR standard many new libraries support this type of
+middleware, for example [Zend Stratigility](https://docs.zendframework.com/zend-stratigility/). 
+
+You're required to supply a [PSR-17 response factory](https://www.php-fig.org/psr/psr-17/#22-responsefactoryinterface),
+to create a `401 Unauthorized` response for requests with invalid signatures.
+
+```php
+use LTO/HttpSignature/HttpSignature;
+use LTO/HttpSignature/ServerMiddleware;
+use Zend\Stratigility\MiddlewarePipe;
+use Zend\Diactoros\ResponseFactory;
+
+$service = new HttpSignature(/* ... */);
+$responseFactory = new ResponseFactory();
+$middleware = new ServerMiddleware($service, $responseFactory);
+
+$app = new MiddlewarePipe();
+$app->pipe($middleware);
+```
+
+#### Double pass middleware
+
+My PHP libraries support double pass middleware. These are callables with the following signature;
+
+```php
+fn(ServerRequestInterface $request, ResponseInterface $response, callable $next): ResponseInterface
+```
+
+To get a callback to be used by libraries as [Jasny Router](https://github.com/jasny/router) and
+[Relay](http://relayphp.com/), use the `asDoublePass()` method.
+
+```php
+use LTO/HttpSignature/HttpSignature;
+use LTO/HttpSignature/ServerMiddleware;
+use Relay\RelayBuilder;
+
+$service = new HttpSignature(/* ... */);
+$middleware = new ServerMiddleware($service);
+
+$relayBuilder = new RelayBuilder($resolver);
+$relay = $relayBuilder->newInstance([
+    $middleware->asDoublePass(),
+]);
+
+$response = $relay($request, $baseResponse);
+```
+
+#### Verifying requests
+
+If a request is signed and the signature is valid, the middle with set a `signature_key_id` request attribute.
+
+For requests that are *not* signed, the middleware does nothing. This means that you need to always check if the request
+has the `signature_key_id`. 
+
+```php
+$keyId = $request->getAttribute(`signature_key_id`);
+
+if ($keyId === null) {
+    $errorResponse = $response
+        ->withStatus(401)
+        ->withHeader('Content-Type', 'text/plain');
+        
+    $errorResponse = $service->setAuthenticateResponseHeader($errorResponse);
+    $errorResponse->getBody()->write('request not signed');
+}
+
+// Request is signed and signature is valid
+// ...
+```
+
 
 ### Client middleware
 
@@ -173,14 +249,14 @@ fn(RequestInterface $request, ResponseInterface $response, callable $next): Resp
 ```
 
 Most HTTP clients do not support double pass middleware, but a type of single pass instead. However more general
-purpose PSR-7 middleware libraries, like [Replay](http://relayphp.com/), do support double pass.
+purpose PSR-7 middleware libraries, like [Relay](http://relayphp.com/), do support double pass.
 
 ```php
 use Relay\RelayBuilder;
 
 $relayBuilder = new RelayBuilder($resolver);
 $relay = $relayBuilder->newInstance([
-    $middleware->asDoublePass()
+    $middleware->asDoublePass(),
 ]);
 
 $response = $relay($request, $baseResponse);
@@ -234,7 +310,7 @@ $middleware = new ClientMiddleware($service, $keyId);
 $pluginClient = new PluginClient(
     HttpClientDiscovery::find(),
     [
-        $middleware->asHttplugPlugin()
+        $middleware->asHttplugPlugin(),
     ]
 );
 ```

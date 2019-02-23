@@ -8,6 +8,7 @@ use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;
 use Carbon\CarbonImmutable;
 use Improved\IteratorPipeline\Pipeline;
 use Psr\Http\Message\RequestInterface as Request;
+use Psr\Http\Message\ResponseInterface as Response;
 
 /**
  * Create and verify HTTP Signatures.
@@ -57,7 +58,7 @@ class HTTPSignature
     public function __construct($algorithm, callable $sign, callable $verify)
     {
         if (is_array($algorithm) && count($algorithm) === 0) {
-            throw new InvalidArgumentException('No supported algorithms specified');
+            throw new \InvalidArgumentException('No supported algorithms specified');
         }
 
         $this->supportedAlgorithms = is_array($algorithm) ? array_values($algorithm) : [$algorithm];
@@ -79,7 +80,7 @@ class HTTPSignature
             return $this;
         }
 
-        if (!in_array($this->supportedAlgorithms, $algorithm)) {
+        if (!in_array($algorithm, $this->supportedAlgorithms, true)) {
             throw new \InvalidArgumentException('Unsupported algorithm: ' . $algorithm);
         }
 
@@ -171,9 +172,10 @@ class HTTPSignature
      * Verify the signature
      *
      * @param Request $request
+     * @return string `keyId` parameter
      * @throws HTTPSignatureException
      */
-    public function verify(Request $request): void
+    public function verify(Request $request): string
     {
         $params = $this->getParams($request);
         $this->assertParams($params);
@@ -193,6 +195,8 @@ class HTTPSignature
         if (!$verified) {
             throw new HTTPSignatureException("invalid signature");
         }
+
+        return $params['keyId'];
     }
 
     /**
@@ -233,6 +237,26 @@ class HTTPSignature
         return $request->withHeader('Authorization', $header);
     }
 
+    /**
+     * Set the `WWW-Authenticate` header for each algorithm (on a 401 response).
+     *
+     * @param string   $method
+     * @param Response $response
+     * @return Response
+     */
+    public function setAuthenticateResponseHeader(string $method, Response $response): Response
+    {
+        $algorithms = $this->getSupportedAlgorithms();
+        $requiredHeaders = $this->getRequiredHeaders($method);
+
+        $header = sprintf('Signature algorithm="%%s",headers="%s"', join(' ', $requiredHeaders));
+
+        foreach ($algorithms as $algorithm) {
+            $response = $response->withHeader('WWW-Authenticate', sprintf($header, $algorithm));
+        }
+
+        return $response;
+    }
 
     /**
      * Extract the authorization Signature parameters
@@ -333,7 +357,7 @@ class HTTPSignature
         $required = ['keyId', 'algorithm', 'headers', 'signature'];
 
         foreach ($required as $param) {
-            if (!array_key_exists($param, $params)) {
+            if (!isset($params[$param])) {
                 throw new HTTPSignatureException("{$param} not specified in Authorization header");
             }
         }
