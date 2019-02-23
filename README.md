@@ -310,7 +310,7 @@ $middleware = new ClientMiddleware($service, $keyId);
 $pluginClient = new PluginClient(
     HttpClientDiscovery::find(),
     [
-        $middleware->asHttplugPlugin(),
+        $middleware->forHttplug(),
     ]
 );
 ```
