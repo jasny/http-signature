@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HTTPSignature;
+namespace LTO\HttpSignature;
 
 use Improved as i;
 use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;
@@ -50,7 +50,7 @@ class HTTPSignature
 
     /**
      * Class construction.
-     * 
+     *
      * @param string|string[] $algorithm  Supported algorithm(s).
      * @param callable        $sign       Function to sign a request.
      * @param callable        $verify     Function to verify a signed request.
@@ -102,7 +102,7 @@ class HTTPSignature
 
     /**
      * Get service with modified max clock offset.
-     * 
+     *
      * @param int $clockSkew
      * @return static
      */
@@ -120,7 +120,7 @@ class HTTPSignature
     
     /**
      * Get the max clock offset.
-     * 
+     *
      * @return int
      */
     public function getClockSkew(): int
@@ -188,7 +188,7 @@ class HTTPSignature
 
         $message = $this->getMessage($request, $headers);
         $keyId = $params['keyId'] ?? '';
-        $signature = base64_decode($params['signature'] ?? '');
+        $signature = base64_decode($params['signature'] ?? '', true);
 
         $verified = ($this->verify)($message, $signature, $keyId, $params['algorithm'] ?? 'unknown');
 
@@ -295,14 +295,14 @@ class HTTPSignature
      */
     protected function assertRequiredHeaders(string $method, array $headers): void
     {
-        if (in_array('x-date', $headers)) {
+        if (in_array('x-date', $headers, true)) {
             $key = array_search('x-date', $headers, true);
             $headers[$key] = 'date';
         }
 
         $missing = array_diff($this->getRequiredHeaders($method), $headers);
 
-        if (!empty($missing)) {
+        if ($missing !== []) {
             $err = sprintf("%s %s not part of signature", join(', ', $missing), count($missing) === 1 ? 'is' : 'are');
             throw new HTTPSignatureException($err);
         }
@@ -362,7 +362,7 @@ class HTTPSignature
             }
         }
 
-        if (!in_array($params['algorithm'], $this->supportedAlgorithms)) {
+        if (!in_array($params['algorithm'], $this->supportedAlgorithms, true)) {
             throw new HTTPSignatureException(sprintf(
                 'signed with unsupported algorithm: %s',
                 $params['algorithm']

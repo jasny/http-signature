@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HTTPSignature;
+namespace LTO\HttpSignature;
 
 use Http\Client\Common\Plugin as HttpPlugin;
 use Http\Promise\Promise as HttpPromise;
@@ -75,7 +75,8 @@ class ClientMiddleware
     public function forHttplug(): HttpPlugin
     {
         return new class ($this->service, $this->keyId) extends ClientMiddleware implements HttpPlugin {
-            function handleRequest(RequestInterface $request, callable $next, callable $first): HttpPromise {
+            public function handleRequest(RequestInterface $request, callable $next, callable $first): HttpPromise
+            {
                 $signedRequest = $this->service->sign($request, $this->keyId);
                 return $next($signedRequest);
             }

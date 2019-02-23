@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HTTPSignature;
+namespace LTO\HttpSignature;
 
 use Psr\Http\Message\ServerRequestInterface as ServerRequest;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -65,7 +65,7 @@ class ServerMiddleware implements MiddlewareInterface
      */
     public function asDoublePass(): callable
     {
-        return function(ServerRequest $request, Response $response, callable $next): Response {
+        return function (ServerRequest $request, Response $response, callable $next): Response {
             return $this->isRequestSigned($request)
                 ? $this->handleSignedRequest($request, $response, $next)
                 : $next($request, $response);
@@ -105,7 +105,7 @@ class ServerMiddleware implements MiddlewareInterface
     {
         return
             $request->hasHeader('authorization') &&
-            (substr(strtolower($request->getHeaderLine('authorization')), 0 , 10) === 'signature ');
+            (substr(strtolower($request->getHeaderLine('authorization')), 0, 10) === 'signature ');
     }
 
     /**
@@ -132,8 +132,11 @@ class ServerMiddleware implements MiddlewareInterface
      * @return Response
      * @throws \RuntimeException when can't write body.
      */
-    protected function createUnauthorizedResponse(ServerRequest $request, ?Response $response, string $message): Response
-    {
+    protected function createUnauthorizedResponse(
+        ServerRequest $request,
+        ?Response $response,
+        string $message
+    ): Response {
         $newResponse = $response === null
             ? $this->createResponse(401)
             : $response->withStatus(401);
