@@ -5,9 +5,14 @@
     "type": "library",
     "authors": [
         {
+            "name": "LTO Network",
+            "email": "info@legalthings.io",
+            "homepage": "https://lto.network"
+        },
+        {
             "name": "Arnold Daniels",
             "email": "arnold@jasny.net",
-            "homepage": "http://www.jasny.net"
+            "homepage": "https://www.jasny.net"
         }
     ],
     "support": {
