@@ -18,7 +18,7 @@ class ClientMiddleware
     protected $service;
 
     /**
-     * @var string
+     * @var string|null
      */
     protected $keyId;
 
@@ -26,9 +26,9 @@ class ClientMiddleware
      * Class constructor.
      *
      * @param HttpSignature $service
-     * @param string        $keyId    Default key id
+     * @param string        $keyId    Default keyId
      */
-    public function __construct(HttpSignature $service, string $keyId)
+    public function __construct(HttpSignature $service, ?string $keyId = null)
     {
         $this->service = $service;
         $this->keyId = $keyId;
@@ -42,6 +42,10 @@ class ClientMiddleware
      */
     public function asDoublePass(): callable
     {
+        if ($this->keyId === null) {
+            throw new \BadMethodCallException('Unable to use as double pass middleware, no keyId specified');
+        }
+
         return function (RequestInterface $request, ResponseInterface $response, callable $next): ResponseInterface {
             $signedRequest = $this->service->sign($request, $this->keyId);
             return $next($signedRequest, $response);
@@ -59,9 +63,9 @@ class ClientMiddleware
         return function (callable $handler) {
             return function (RequestInterface $request, array $options) use ($handler) {
                 $keyId = $options['signature_key_id'] ?? $this->keyId;
-                $signedRequest = $this->service->sign($request, $keyId);
+                $nextRequest = $keyId !== null ? $this->service->sign($request, $keyId) : $request;
 
-                return $handler($signedRequest, $options);
+                return $handler($nextRequest, $options);
             };
         };
     }
@@ -74,6 +78,10 @@ class ClientMiddleware
      */
     public function forHttplug(): HttpPlugin
     {
+        if ($this->keyId === null) {
+            throw new \BadMethodCallException('Unable to use as httplug plugin, no keyId specified');
+        }
+
         return new class ($this->service, $this->keyId) extends ClientMiddleware implements HttpPlugin {
             public function handleRequest(RequestInterface $request, callable $next, callable $first): HttpPromise
             {

@@ -269,6 +269,9 @@ _The client middleware does not conform to PSR-15 (single pass) as that is inten
 [Guzzle](http://docs.guzzlephp.org) is the most popular HTTP Client for PHP. The middleware has a `forGuzzle()` method
 that creates a callback which can be used as Guzzle middleware.
 
+When using the middleware for Guzzle, it's not required to pass a `$keyId` to the constructor. Instead use Guzzle option
+`signature_key_id`. This also allows the option use different keys per request or disable signing for requests. 
+
 ```php
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Client;
@@ -276,20 +279,29 @@ use LTO/HttpSignature/HttpSignature;
 use LTO/HttpSignature/ClientMiddleware;
 
 $service = new HttpSignature(/* ... */);
-$middleware = new ClientMiddleware($service, $keyId);
+$middleware = new ClientMiddleware($service);
 
 $stack = new HandlerStack();
 $stack->push($middleware->forGuzzle());
 
-$client = new Client(['handler' => $stack]);
+$client = new Client(['handler' => $stack, 'signature_key_id' => $keyId]);
+
+$client->get('/foo');                                    // Sign with default key
+$client->get('/foo', ['signature_key_id' => $altKeyId]); // Sign with other key
+$client->get('/foo', ['signature_key_id' => null]);      // Don't sign
 ```
 
-When using the middleware for Guzzle, you may pass option `signature_key_id` which will be used instead of `$keyId`.
-_Note that this feature isn't available for double pass and Httplug._
+Alternatively, you can disable signing by default and only sign when specified;
 
 ```php
-$client->get('/foo', ['signature_key_id' => $keyId]);
+$client = new Client(['handler' => $stack]);
+
+$client->get('/foo');                                 // Don't sign
+$client->get('/foo', ['signature_key_id' => $keyId]); // Sign
 ```
+
+_Using an option is only available for Guzzle. For HTTPlug and other clients, you need to create a client per key or
+sign without the use of middleware._
 
 #### HTTPlug
 

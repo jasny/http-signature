@@ -33,4 +33,3 @@ script:
 
 after_success:
   - php "$HOME/ocular.phar" code-coverage:upload --format=php-clover cache/logs/clover.xml
-

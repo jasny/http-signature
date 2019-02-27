@@ -60,26 +60,35 @@ class ClientMiddlewareTest extends TestCase
         $this->assertSame($response, $ret);
     }
 
-    public function guzzleOptionsProvider()
+    /**
+     * @expectedException \BadMethodCallException
+     * @expectedExceptionMessage Unable to use as double pass middleware, no keyId specified
+     */
+    public function testAsDoublePassMiddlewareWithoutKeyId()
+    {
+        $middleware = new ClientMiddleware($this->service);
+        $middleware->asDoublePass();
+    }
+
+    public function asyncProvider()
     {
         return [
             [false],
             [true],
-            [false, 'key-99'],
         ];
     }
 
     /**
-     * @dataProvider guzzleOptionsProvider
+     * @dataProvider asyncProvider
      */
-    public function testAsGuzzleMiddlewareWithSyncRequest(bool $async, ?string $keyIdOption = null)
+    public function testAsGuzzleMiddleware(bool $async)
     {
         $signedRequest = $this->createMock(RequestInterface::class);
         $response = $this->createMock(ResponseInterface::class);
         $history = [];
 
         $this->service->expects($this->once())->method('sign')
-            ->with($this->isInstanceOf(RequestInterface::class), $keyIdOption ?? 'key-1')
+            ->with($this->isInstanceOf(RequestInterface::class), 'key-1')
             ->willReturn($signedRequest);
 
         $mockHandler = new GuzzleMockHandler([$response]);
@@ -90,10 +99,7 @@ class ClientMiddlewareTest extends TestCase
 
         $client = new GuzzleClient(['handler' => $handlerStack]);
 
-        $options = array_merge(
-            ['timeout' => 90, 'answer' => 42],
-            $keyIdOption === null ? [] : ['signature_key_id' => $keyIdOption]
-        );
+        $options = ['timeout' => 90, 'answer' => 42];
 
         $method = $async ? 'getAsync' : 'get';
         $ret = $client->$method('/foo', $options);
@@ -114,6 +120,47 @@ class ClientMiddlewareTest extends TestCase
         $this->assertSame($expectedOptions, $actualOptions);
     }
 
+    public function guzzleOptionsProvider()
+    {
+        return [
+            ['key-1', 'key-1', null, null],
+            ['key-2', null, 'key-2', null],
+            ['key-2', 'key-1', 'key-2', null],
+            ['key-3', null, null, 'key-3'],
+            ['key-3', 'key-1', null, 'key-3'],
+            ['key-3', null, 'key-2', 'key-3'],
+            ['key-3', 'key-1', 'key-2', 'key-3'],
+        ];
+    }
+
+    /**
+     * @dataProvider guzzleOptionsProvider
+     */
+    public function testAsGuzzleMiddlewareWithOption(?string $expect, ?string $param, ?string $opt, ?string $reqOpt)
+    {
+        $signedRequest = $this->createMock(RequestInterface::class);
+        $response = $this->createMock(ResponseInterface::class);
+        $history = [];
+
+        $this->service->expects($this->once())->method('sign')
+            ->with($this->isInstanceOf(RequestInterface::class), $expect)
+            ->willReturn($signedRequest);
+
+        $mockHandler = new GuzzleMockHandler([$response]);
+        $handlerStack = GuzzleHandlerStack::create($mockHandler);
+
+        $middleware = new ClientMiddleware($this->service, $param);
+
+        $handlerStack->push($middleware->forGuzzle());
+        $handlerStack->push(GuzzleMiddleware::history($history));
+
+        $client = new GuzzleClient(['handler' => $handlerStack, 'signature_key_id' => $opt]);
+
+        $ret = $client->get('/foo', $reqOpt !== null ? ['signature_key_id' => $reqOpt] : []);
+
+        $this->assertSame($response, $ret);
+    }
+
     public function testAsHttplugMiddleware()
     {
         $request = $this->createMock(RequestInterface::class);
@@ -132,5 +179,15 @@ class ClientMiddlewareTest extends TestCase
         $ret = $client->sendRequest($request);
 
         $this->assertSame($response, $ret);
+    }
+
+    /**
+     * @expectedException \BadMethodCallException
+     * @expectedExceptionMessage Unable to use as httplug plugin, no keyId specified
+     */
+    public function testAsHttplugMiddlewareWithoutKeyId()
+    {
+        $middleware = new ClientMiddleware($this->service);
+        $middleware->forHttplug();
     }
 }
