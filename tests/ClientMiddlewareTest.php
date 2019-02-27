@@ -123,20 +123,21 @@ class ClientMiddlewareTest extends TestCase
     public function guzzleOptionsProvider()
     {
         return [
-            ['key-1', 'key-1', null, null],
-            ['key-2', null, 'key-2', null],
-            ['key-2', 'key-1', 'key-2', null],
-            ['key-3', null, null, 'key-3'],
-            ['key-3', 'key-1', null, 'key-3'],
-            ['key-3', null, 'key-2', 'key-3'],
-            ['key-3', 'key-1', 'key-2', 'key-3'],
+            ['key-1', 'key-1', [], []],
+            ['key-2', null, ['signature_key_id' => 'key-2'], []],
+            ['key-2', 'key-1', ['signature_key_id' => 'key-2'], []],
+            ['key-3', null, [], ['signature_key_id' => 'key-3']],
+            ['key-3', null, ['signature_key_id' => null], ['signature_key_id' => 'key-3']],
+            ['key-3', 'key-1', [], ['signature_key_id' => 'key-3']],
+            ['key-3', null, ['signature_key_id' => 'key-2'], ['signature_key_id' => 'key-3']],
+            ['key-3', 'key-1', ['signature_key_id' => 'key-2'], ['signature_key_id' => 'key-3']],
         ];
     }
 
     /**
      * @dataProvider guzzleOptionsProvider
      */
-    public function testAsGuzzleMiddlewareWithOption(?string $expect, ?string $param, ?string $opt, ?string $reqOpt)
+    public function testAsGuzzleMiddlewareWithOption(?string $expect, ?string $param, array $opt, array $reqOpt)
     {
         $signedRequest = $this->createMock(RequestInterface::class);
         $response = $this->createMock(ResponseInterface::class);
@@ -154,9 +155,42 @@ class ClientMiddlewareTest extends TestCase
         $handlerStack->push($middleware->forGuzzle());
         $handlerStack->push(GuzzleMiddleware::history($history));
 
-        $client = new GuzzleClient(['handler' => $handlerStack, 'signature_key_id' => $opt]);
+        $client = new GuzzleClient(['handler' => $handlerStack] + $opt);
 
-        $ret = $client->get('/foo', $reqOpt !== null ? ['signature_key_id' => $reqOpt] : []);
+        $ret = $client->get('/foo', $reqOpt);
+
+        $this->assertSame($response, $ret);
+    }
+
+    public function guzzleDisableOptionsProvider()
+    {
+        return [
+            [['signature_key_id' => null], []],
+            [['signature_key_id' => 'key-2'], ['signature_key_id' => null]],
+        ];
+    }
+
+    /**
+     * @dataProvider guzzleDisableOptionsProvider
+     */
+    public function testAsGuzzleMiddlewareWithSigningDisabled(array $opt, array $reqOpt)
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $history = [];
+
+        $this->service->expects($this->never())->method('sign');
+
+        $mockHandler = new GuzzleMockHandler([$response]);
+        $handlerStack = GuzzleHandlerStack::create($mockHandler);
+
+        $middleware = new ClientMiddleware($this->service);
+
+        $handlerStack->push($middleware->forGuzzle());
+        $handlerStack->push(GuzzleMiddleware::history($history));
+
+        $client = new GuzzleClient(['handler' => $handlerStack]);
+
+        $ret = $client->get('/foo', ['signature_key_id' => null]);
 
         $this->assertSame($response, $ret);
     }
