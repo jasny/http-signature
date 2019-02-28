@@ -1,11 +1,11 @@
 <?php
 
-namespace LTO\HttpSignature\Tests;
+namespace Jasny\HttpSignature\Tests;
 
 use Jasny\TestHelper;
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\HttpSignatureException;
-use LTO\HttpSignature\ServerMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\HttpSignatureException;
+use Jasny\HttpSignature\ServerMiddleware;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -15,7 +15,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * @covers \LTO\HttpSignature\ServerMiddleware
+ * @covers \Jasny\HttpSignature\ServerMiddleware
  */
 class ServerMiddlewareTest extends TestCase
 {

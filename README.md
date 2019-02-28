@@ -1,9 +1,9 @@
 HTTP Signature service and middleware (PHP)
 ===
 
-[![Build Status](https://travis-ci.org/legalthings/http-signature-php.svg?branch=master)](https://travis-ci.org/legalthings/http-signature-php)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/legalthings/http-signature-php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature-php/?branch=master)
-[![Code Coverage](https://scrutinizer-ci.com/g/legalthings/http-signature-php/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/legalthings/http-signature-php/?branch=master)
+[![Build Status](https://travis-ci.org/jasny/http-signature-php.svg?branch=master)](https://travis-ci.org/jasny/http-signature-php)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/jasny/http-signature-php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature-php/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/jasny/http-signature-php/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature-php/?branch=master)
 [![Packagist Stable Version](https://img.shields.io/packagist/v/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
 [![Packagist License](https://img.shields.io/packagist/l/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
 
@@ -14,7 +14,7 @@ signatures.
 Installation
 ---
 
-    composer require lto/http-signature
+    composer require jasny/http-signature
 
 Usage
 ---
@@ -23,7 +23,7 @@ When creating the `HttpSignature` service, pass a list of supported algorithms, 
 callback to verify signatures.
 
 ```php
-use LTO\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\HttpSignature;
 
 $keys = [
   'hmac-key-1' => 'secret',
@@ -82,7 +82,7 @@ Rather than specifying a single algorithm, an array of supported algorithms may 
 used algorithm is passed as extra parameter to the sign and verify callbacks.
 
 ```php
-use LTO\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\HttpSignature;
 
 $service = new HttpSignature(
     ['hmac-sha256', 'rsa', 'rsa-sha256'],
@@ -154,8 +154,8 @@ You're required to supply a [PSR-17 response factory](https://www.php-fig.org/ps
 to create a `401 Unauthorized` response for requests with invalid signatures.
 
 ```php
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\ServerMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ServerMiddleware;
 use Zend\Stratigility\MiddlewarePipe;
 use Zend\Diactoros\ResponseFactory;
 
@@ -179,8 +179,8 @@ To get a callback to be used by libraries as [Jasny Router](https://github.com/j
 [Relay](http://relayphp.com/), use the `asDoublePass()` method.
 
 ```php
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\ServerMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ServerMiddleware;
 use Relay\RelayBuilder;
 
 $service = new HttpSignature(/* ... */);
@@ -224,8 +224,8 @@ Client middleware can be used to sign requests send by PSR-7 compatible HTTP cli
 [Guzzle](http://docs.guzzlephp.org) and [HTTPlug](http://docs.php-http.org).
 
 ```php
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\ClientMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ClientMiddleware;
 
 $service = new HttpSignature(/* ... */);
 $middleware = new ClientMiddleware($service, $keyId);
@@ -275,8 +275,8 @@ When using the middleware for Guzzle, it's not required to pass a `$keyId` to th
 ```php
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Client;
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\ClientMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ClientMiddleware;
 
 $service = new HttpSignature(/* ... */);
 $middleware = new ClientMiddleware($service);
@@ -313,8 +313,8 @@ The `forHttplug()` method for the middleware creates an object that can be used 
 ```php
 use Http\Discovery\HttpClientDiscovery;
 use Http\Client\Common\PluginClient;
-use LTO\HttpSignature\HttpSignature;
-use LTO\HttpSignature\ClientMiddleware;
+use Jasny\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ClientMiddleware;
 
 $service = new HttpSignature(/* ... */);
 $middleware = new ClientMiddleware($service, $keyId);

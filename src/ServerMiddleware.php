@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HttpSignature;
+namespace Jasny\HttpSignature;
 
 use Psr\Http\Message\ServerRequestInterface as ServerRequest;
 use Psr\Http\Message\ResponseInterface as Response;

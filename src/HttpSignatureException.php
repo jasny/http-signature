@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HttpSignature;
+namespace Jasny\HttpSignature;
 
 /**
  * Error with the HTTP Signature

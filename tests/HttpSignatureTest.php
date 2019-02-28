@@ -1,8 +1,8 @@
 <?php
 
-namespace LTO\HttpSignature\Tests;
+namespace Jasny\HttpSignature\Tests;
 
-use LTO\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\HttpSignature;
 use Improved\IteratorPipeline\Pipeline;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -12,7 +12,7 @@ use Psr\Http\Message\UriInterface as Uri;
 use Carbon\CarbonImmutable;
 
 /**
- * @covers \LTO\HttpSignature\HttpSignature
+ * @covers \Jasny\HttpSignature\HttpSignature
  */
 class HttpSignatureTest extends TestCase
 {
@@ -270,7 +270,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage missing "Authorization" header
      */
     public function testVerifyWithoutAuthorizationHeader()
@@ -287,7 +287,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage authorization scheme should be "Signature" not "Basic"
      */
     public function testVerifyWithInvalidAuthorizationMethod()
@@ -307,7 +307,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage corrupt "Authorization" header
      */
     public function testVerifyWithCorruptAuthorizationHeader()
@@ -339,7 +339,7 @@ class HttpSignatureTest extends TestCase
     /**
      * @dataProvider missingKeyProvider
      *
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      */
     public function testVerifyWithMissingKey(string $missingKey)
     {
@@ -367,7 +367,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage signed with unsupported algorithm: hmac-sha256
      */
     public function testVerifyWithUnsupportedAlgorithm()
@@ -392,7 +392,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedException invalid signature
      */
     public function testVerifyWithInvalidSignature()
@@ -441,7 +441,7 @@ class HttpSignatureTest extends TestCase
 
     /**
      * @dataProvider missingHeaderProvider
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      */
     public function testVerifyWithMissingHeader(array $requiredHeaders, string $message)
     {
@@ -505,7 +505,7 @@ class HttpSignatureTest extends TestCase
     }
 
     /**
-     * @expectedException \LTO\HttpSignature\HttpSignatureException
+     * @expectedException \Jasny\HttpSignature\HttpSignatureException
      * @expectedExceptionMessage signature to old or system clocks out of sync
      */
     public function testVerifyGetRequestWithOldDate()

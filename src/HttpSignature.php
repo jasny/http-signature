@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HttpSignature;
+namespace Jasny\HttpSignature;
 
 use Improved as i;
 use const Improved\FUNCTION_ARGUMENT_PLACEHOLDER as __;

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace LTO\HttpSignature;
+namespace Jasny\HttpSignature;
 
 use Http\Client\Common\Plugin as HttpPlugin;
 use Http\Promise\Promise as HttpPromise;

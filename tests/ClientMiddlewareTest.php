@@ -1,6 +1,6 @@
 <?php
 
-namespace LTO\HttpSignature\Tests;
+namespace Jasny\HttpSignature\Tests;
 
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler as GuzzleMockHandler;
@@ -10,15 +10,15 @@ use GuzzleHttp\Promise\Promise as GuzzlePromise;
 use Http\Mock\Client as HttpMockClient;
 use Http\Client\Common\PluginClient as HttpPluginClient;
 use Jasny\TestHelper;
-use LTO\HttpSignature\ClientMiddleware;
-use LTO\HttpSignature\HttpSignature;
+use Jasny\HttpSignature\ClientMiddleware;
+use Jasny\HttpSignature\HttpSignature;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * @covers \LTO\HttpSignature\ClientMiddleware
+ * @covers \Jasny\HttpSignature\ClientMiddleware
  */
 class ClientMiddlewareTest extends TestCase
 {
