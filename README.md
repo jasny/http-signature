@@ -1,9 +1,9 @@
 HTTP Signature service and middleware (PHP)
 ===
 
-[![Build Status](https://travis-ci.org/jasny/http-signature-php.svg?branch=master)](https://travis-ci.org/jasny/http-signature-php)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/jasny/http-signature-php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature-php/?branch=master)
-[![Code Coverage](https://scrutinizer-ci.com/g/jasny/http-signature-php/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature-php/?branch=master)
+[![Build Status](https://travis-ci.org/jasny/http-signature.svg?branch=master)](https://travis-ci.org/jasny/http-signature)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/jasny/http-signature/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/jasny/http-signature/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature/?branch=master)
 [![Packagist Stable Version](https://img.shields.io/packagist/v/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
 [![Packagist License](https://img.shields.io/packagist/l/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
 
