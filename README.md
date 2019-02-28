@@ -4,8 +4,8 @@ HTTP Signature service and middleware (PHP)
 [![Build Status](https://travis-ci.org/jasny/http-signature.svg?branch=master)](https://travis-ci.org/jasny/http-signature)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/jasny/http-signature/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature/?branch=master)
 [![Code Coverage](https://scrutinizer-ci.com/g/jasny/http-signature/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/jasny/http-signature/?branch=master)
-[![Packagist Stable Version](https://img.shields.io/packagist/v/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
-[![Packagist License](https://img.shields.io/packagist/l/lto/http-signature.svg)](https://packagist.org/packages/lto/http-signature)
+[![Packagist Stable Version](https://img.shields.io/packagist/v/jasny/http-signature.svg)](https://packagist.org/packages/jasny/http-signature)
+[![Packagist License](https://img.shields.io/packagist/l/jasny/http-signature.svg)](https://packagist.org/packages/jasny/http-signature)
 
 This library provides a service for implementing the [IETF HTTP Signatures draft RFC](https://tools.ietf.org/html/draft-cavage-http-signatures).
 It includes PSR-7 compatible middleware for signing requests (by an HTTP client like Guzzle) and verifying http
