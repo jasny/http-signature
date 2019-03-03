@@ -78,6 +78,8 @@ class ServerMiddlewareTest extends TestCase
 
         $this->service->expects($this->once())->method('verify')->with($request)->willReturn($publicKey);
 
+        $this->responseFactory->expects($this->never())->method('createResponse');
+
         $ret = $this->middleware->process($request, $handler);
 
         $this->assertSame($response, $ret);
@@ -241,14 +243,18 @@ class ServerMiddlewareTest extends TestCase
 
         $this->service->expects($this->once())->method('verify')->with($request)->willReturn($publicKey);
 
+        $this->responseFactory->expects($this->never())->method('createResponse');
+
         $doublePass = $this->middleware->asDoublePass();
         $ret = $doublePass($request, $response, $next);
 
         $this->assertSame($response, $ret);
     }
 
-    public function testAsDoublePassMiddlewareWithInvalidSignature()
+    public function testAsDoublePassMiddlewareWithInvalidSignatureWithoutFactory()
     {
+        $this->middleware = new ServerMiddleware($this->service);
+
         $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
         $signature = 'aW52YWxpZA==';
 
@@ -278,7 +284,53 @@ class ServerMiddlewareTest extends TestCase
         $response = $this->createMock(ResponseInterface::class);
         $response->expects($this->once())->method('withStatus')->with(401)->willReturn($unauthorizedResponse);
 
-        $this->responseFactory->expects($this->never())->method('createResponse');
+        $next = $this->createCallbackMock($this->never());
+
+        $this->service->expects($this->once())->method('verify')->with($request)
+            ->willThrowException(new HttpSignatureException('invalid signature'));
+        $this->service->expects($this->atLeastOnce())->method('setAuthenticateResponseHeader')
+            ->with('GET', $this->identicalTo($unauthorizedResponse))
+            ->willReturn($unauthorizedResponse);
+
+        $doublePass = $this->middleware->asDoublePass();
+        $ret = $doublePass($request, $response, $next);
+
+        $this->assertSame($unauthorizedResponse, $ret);
+    }
+
+    public function testAsDoublePassMiddlewareWithInvalidSignatureWithFactory()
+    {
+        $publicKey = 'AVXUh6yvPG8XYqjbUgvKeEJQDQM7DggboFjtGKS8ETRG';
+        $signature = 'aW52YWxpZA==';
+
+        $authorizationHeader = join(',', [
+            'keyId="' . $publicKey . '"',
+            'algorithm="ed25519-sha256"',
+            'headers="(request-target) date"',
+            'signature="' . $signature . '"',
+        ]);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $request->expects($this->any())->method('getMethod')->willReturn('GET');
+        $request->expects($this->any())->method('hasHeader')->with('authorization')->willReturn(true);
+        $request->expects($this->atLeastOnce())->method('getHeaderLine')
+            ->with('authorization')
+            ->willReturn('Signature ' . $authorizationHeader);
+        $request->expects($this->never())->method('withAttribute');
+
+        $body = $this->createMock(StreamInterface::class);
+        $body->expects($this->once())->method('write')->with('invalid signature');
+
+        $unauthorizedResponse = $this->createMock(ResponseInterface::class);
+        $unauthorizedResponse->expects($this->once())->method('withHeader')
+            ->with('Content-Type', 'text/plain')->willReturnSelf();
+        $unauthorizedResponse->expects($this->once())->method('getBody')->willReturn($body);
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->never())->method('withStatus');
+
+        $this->responseFactory->expects($this->once())->method('createResponse')
+            ->with(401)->willReturn($unauthorizedResponse);
 
         $next = $this->createCallbackMock($this->never());
 

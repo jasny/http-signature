@@ -111,16 +111,19 @@ class ServerMiddleware implements MiddlewareInterface
     /**
      * Create a response using the response factory.
      *
-     * @param int $status  Response status
+     * @param int           $status            Response status
+     * @param Response|null $originalResponse
      * @return Response
      */
-    protected function createResponse(int $status): Response
+    protected function createResponse(int $status, ?Response $originalResponse): Response
     {
-        if ($this->responseFactory === null) {
+        if ($this->responseFactory === null && $originalResponse === null) {
             throw new \BadMethodCallException('Response factory not set');
         }
 
-        return $this->responseFactory->createResponse($status);
+        return $this->responseFactory !== null
+            ? $this->responseFactory->createResponse($status)
+            : $originalResponse->withStatus($status);
     }
 
     /**
@@ -137,9 +140,7 @@ class ServerMiddleware implements MiddlewareInterface
         ?Response $response,
         string $message
     ): Response {
-        $newResponse = $response === null
-            ? $this->createResponse(401)
-            : $response->withStatus(401);
+        $newResponse = $this->createResponse(401, $response);
 
         $errorResponse = $this->service->setAuthenticateResponseHeader($request->getMethod(), $newResponse)
             ->withHeader('Content-Type', 'text/plain');

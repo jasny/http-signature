@@ -178,6 +178,9 @@ fn(ServerRequestInterface $request, ResponseInterface $response, callable $next)
 To get a callback to be used by libraries as [Jasny Router](https://github.com/jasny/router) and
 [Relay](http://relayphp.com/), use the `asDoublePass()` method.
 
+When using as double pass middleware, the supplying a resource factory is optional. If not supplied, it will use the
+response passed when invoked.
+
 ```php
 use Jasny\HttpSignature\HttpSignature;
 use Jasny\HttpSignature\ServerMiddleware;
