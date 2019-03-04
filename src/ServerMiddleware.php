@@ -115,7 +115,7 @@ class ServerMiddleware implements MiddlewareInterface
      * @param Response|null $originalResponse
      * @return Response
      */
-    protected function createResponse(int $status, ?Response $originalResponse): Response
+    protected function createResponse(int $status, ?Response $originalResponse = null): Response
     {
         if ($this->responseFactory === null && $originalResponse === null) {
             throw new \BadMethodCallException('Response factory not set');
@@ -123,7 +123,7 @@ class ServerMiddleware implements MiddlewareInterface
 
         return $this->responseFactory !== null
             ? $this->responseFactory->createResponse($status)
-            : $originalResponse->withStatus($status);
+            : $originalResponse->withStatus($status)->withBody(clone $originalResponse->getBody());
     }
 
     /**
