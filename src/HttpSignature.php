@@ -42,6 +42,12 @@ class HttpSignature
     protected $sign;
 
     /**
+     * Use nonce extension.
+     * @var int|null
+     */
+    protected $nonce = null;
+
+    /**
      * Function to verify a signed request.
      * @var callable
      */
@@ -167,6 +173,37 @@ class HttpSignature
         return $this->requiredHeaders[$method] ?? $this->requiredHeaders['default'];
     }
 
+    /**
+     * Configure the initial nonce for signing requests.
+     *
+     * Each time 'sign' is called the nonce increases, when this is set.
+     * Don't rely on nonce to be a specific value, this is primarily useful for testing.
+     *
+     * @param int $nonce  16-bit unsigned int
+     * @return static
+     */
+    public function withNonce(int $nonce)
+    {
+        if ($nonce < 0 && $nonce > 0xffff) {
+            throw new \InvalidArgumentException('Initial nonce should be a 16 bit unsingned int');
+        }
+
+        $clone = clone $this;
+        $clone->nonce = $nonce;
+
+        return $clone;
+    }
+
+    /**
+     * Get nonce as 32 bit unsignend int.
+     *
+     * @return string
+     */
+    protected function getNonce(): string
+    {
+        return $this->nonce !== null ? (string)($this->nonce++) : random_bytes(4);
+    }
+
 
     /**
      * Verify the signature
@@ -205,17 +242,20 @@ class HttpSignature
      * @param Request     $request
      * @param string      $keyId      Public key or key reference
      * @param string|null $algorithm  Signing algorithm, must be specified if more than one is supported.
+     * @param string|null $clientId   Client ID for 'Nonce' extensions
      * @return Request
      * @throws \RuntimeException for an unsupported or unspecified algorithm
      */
-    public function sign(Request $request, string $keyId, ?string $algorithm = null): Request
+    public function sign(Request $request, string $keyId, ?string $algorithm = null, ?string $clientId = null): Request
     {
         $method = $request->getMethod();
 
         $params = [
             'keyId' => $keyId,
             'algorithm' => $this->getSignAlgorithm($algorithm),
-            'headers' => join(' ', $this->getRequiredHeaders($method))
+            'headers' => join(' ', $this->getRequiredHeaders($method)),
+            'clientId' => $clientId,
+            'nonce' => $clientId !== null ? $this->getNonce() : null,
         ];
 
         if (!$request->hasHeader('Date') && !$request->hasHeader('X-Date')) {
@@ -231,10 +271,10 @@ class HttpSignature
 
         $signature = base64_encode($rawSignature);
 
-        $args = [$params['keyId'], $params['algorithm'], $params['headers'], $signature];
-        $header = sprintf('Signature keyId="%s",algorithm="%s",headers="%s",signature="%s"', ...$args);
+        $args = $this->onlyParams($params, ['keyId', 'algorithm', 'headers', 'clientId', 'nonce'])
+            + ['signature' => $signature];
 
-        return $request->withHeader('Authorization', $header);
+        return $request->withHeader('Authorization', $this->buildSignatureHeader($args));
     }
 
     /**
@@ -430,5 +470,42 @@ class HttpSignature
         }
 
         return $algorithm ?? $this->supportedAlgorithms[0];
+    }
+
+    /**
+     * Get a specified parameters in order.
+     *
+     * @param array<string,string> $params
+     * @param array<string>        $keys
+     * @return array
+     */
+    protected function onlyParams(array $params, array $keys): array
+    {
+        $result = [];
+
+        foreach ($keys as $key) {
+            if (isset($params[$key])) {
+                $result[$key] = $params[$key];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Build signature authentication header.
+     *
+     * @param array $params
+     * @return string
+     */
+    protected function buildSignatureHeader(array $params): string
+    {
+        $parts  = [];
+
+        foreach ($params as $key => $value) {
+            $parts[] = sprintf('%s="%s"', $key, $value);
+        }
+
+        return 'Signature ' . join(',', $parts);
     }
 }

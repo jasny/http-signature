@@ -279,10 +279,12 @@ class ServerMiddlewareTest extends TestCase
         $unauthorizedResponse = $this->createMock(ResponseInterface::class);
         $unauthorizedResponse->expects($this->once())->method('withHeader')
             ->with('Content-Type', 'text/plain')->willReturnSelf();
+        $unauthorizedResponse->expects($this->once())->method('withBody')->willReturnSelf();
         $unauthorizedResponse->expects($this->once())->method('getBody')->willReturn($body);
 
         $response = $this->createMock(ResponseInterface::class);
         $response->expects($this->once())->method('withStatus')->with(401)->willReturn($unauthorizedResponse);
+        $response->expects($this->once())->method('getBody')->willReturn($body);
 
         $next = $this->createCallbackMock($this->never());
 
