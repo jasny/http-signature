@@ -111,13 +111,17 @@ $signService->sign($request, $keyId);
 #### Required headers
 
 By default, the request target (includes the HTTP method, URL path and query parameters) and the `Date` header are
-required for all types of requests.
+required to be part of the signature message for all types of requests.
 
 ```php
 $service = $service->withRequiredHeaders('POST', ['(request-target)', 'date', 'content-type', 'digest']);
 ```
 
 The required headers can be specified per request method or as `default`.
+
+Note that the requirement only applies on including the headers to create the signature. If the headers are not used in
+the request, they are also not part of the signature. Checking if headers are set in the request and have a valid value,
+is outside the scope of this library.
 
 #### Date header
 
@@ -133,7 +137,7 @@ The time that is allowed can be configured as clock skew;
 $service = $service->withClockSkew(1800); // Accept requests up to 30 minutes old
 ```
 
-#### X-Date header
+**X-Date header**
 
 Browsers automatically set the `Date` header for AJAX requests. This makes it impossible to use this for the signature.
 As solution, an `X-Date` header may be used that supersedes the `Date` header.

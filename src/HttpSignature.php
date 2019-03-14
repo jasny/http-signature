@@ -182,7 +182,7 @@ class HttpSignature
 
         $method = $request->getMethod();
         $headers = isset($params['headers']) ? explode(' ', $params['headers']) : [];
-        $this->assertRequiredHeaders($method, $headers);
+        $this->assertRequiredHeaders($request, $method, $headers);
 
         $this->assertSignatureAge($request);
 
@@ -290,18 +290,22 @@ class HttpSignature
     /**
      * Assert that required headers are present
      *
+     * @param Request  $request
      * @param string   $method
      * @param string[] $headers
      * @throws HttpSignatureException
      */
-    protected function assertRequiredHeaders(string $method, array $headers): void
+    protected function assertRequiredHeaders(Request $request, string $method, array $headers): void
     {
         if (in_array('x-date', $headers, true)) {
             $key = array_search('x-date', $headers, true);
             $headers[$key] = 'date';
         }
 
-        $missing = array_diff($this->getRequiredHeaders($method), $headers);
+        $requestHeaders = array_keys($request->getHeaders());
+        $required = array_intersect($this->getRequiredHeaders($method), $requestHeaders);
+
+        $missing = array_diff($required, $headers);
 
         if ($missing !== []) {
             $err = sprintf("%s %s not part of signature", join(', ', $missing), count($missing) === 1 ? 'is' : 'are');

@@ -85,6 +85,13 @@ class HttpSignatureTest extends TestCase
                 return $headers[strtolower($key)];
             });
 
+        $psrHeaders = Pipeline::with($headers)
+            ->map(static function($value) {
+                return [$value];
+            })
+            ->toArray();
+        $request->expects($this->any())->method('getHeaders')->willReturn($psrHeaders);
+
         return $request;
     }
 
@@ -436,6 +443,7 @@ class HttpSignatureTest extends TestCase
         return [
             [['date', 'digest'], 'digest is not part of signature'],
             [['date', 'digest', 'content-length'], 'digest, content-length are not part of signature'],
+            [['date', 'digest', 'accept'], 'digest is not part of signature'],
         ];
     }
 
@@ -454,7 +462,11 @@ class HttpSignatureTest extends TestCase
         $signature = 'PIw+8VW129YY/6tRfThI3ZA0VygH4cYWxIayUZbdA3I9CKUdmqttvVZvOXN5BX2Z9jfO3f1vD1/R2jxwd3BHBw==';
 
         $url = '/foos?a=1';
-        $headers = ['Date' => 'Sat, 22 Aug 1981 20:52:00 +0000'];
+        $headers = [
+            'Date' => 'Sat, 22 Aug 1981 20:52:00 +0000',
+            'Digest' => hash('sha256', ''),
+            'Content-Length' => 0,
+        ];
         $params = [
             'keyId' => $publicKey,
             'algorithm' => 'ed25519-sha256',
