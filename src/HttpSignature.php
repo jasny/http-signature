@@ -450,7 +450,7 @@ class HttpSignature
         $headers = $this->getRequiredHeaders($request->getMethod());
 
         return Pipeline::with($headers)
-            ->filter(static function(string $header) use ($request) {
+            ->filter(static function (string $header) use ($request) {
                 return $header === '(request-target)'
                     || $request->hasHeader($header)
                     || ($header === 'date' && $request->hasHeader('x-date'));
