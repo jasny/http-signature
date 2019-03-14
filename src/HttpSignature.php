@@ -248,15 +248,7 @@ class HttpSignature
      */
     public function sign(Request $request, string $keyId, ?string $algorithm = null, ?string $clientId = null): Request
     {
-        $method = $request->getMethod();
-
-        $params = [
-            'keyId' => $keyId,
-            'algorithm' => $this->getSignAlgorithm($algorithm),
-            'headers' => join(' ', $this->getRequiredHeaders($method)),
-            'clientId' => $clientId,
-            'nonce' => $clientId !== null ? $this->getNonce() : null,
-        ];
+        $algorithm = $this->getSignAlgorithm($algorithm);
 
         if (!$request->hasHeader('Date') && !$request->hasHeader('X-Date')) {
             $date = CarbonImmutable::now()->format(DATE_RFC1123);
@@ -264,6 +256,15 @@ class HttpSignature
         }
 
         $headers = $this->getSignHeaders($request);
+
+        $params = [
+            'keyId' => $keyId,
+            'algorithm' => $algorithm,
+            'headers' => join(' ', $headers),
+            'clientId' => $clientId,
+            'nonce' => $clientId !== null ? $this->getNonce() : null,
+        ];
+
         $message = $this->getMessage($request, $headers);
 
         $rawSignature = ($this->sign)($message, $keyId, $params['algorithm']);
@@ -361,6 +362,11 @@ class HttpSignature
             ->map(i\function_partial('strtolower', __))
             ->toArray();
 
+        if (in_array('date', $headers, true) && $request->hasHeader('X-Date')) {
+            $index = array_search('date', $headers, true);
+            $headers[$index] = 'x-date';
+        }
+
         $message = [];
         
         foreach ($headers as $header) {
@@ -443,12 +449,13 @@ class HttpSignature
     {
         $headers = $this->getRequiredHeaders($request->getMethod());
 
-        if (in_array('date', $headers, true) && $request->hasHeader('X-Date')) {
-            $index = array_search('date', $headers, true);
-            $headers[$index] = 'x-date';
-        }
-
-        return $headers;
+        return Pipeline::with($headers)
+            ->filter(static function(string $header) use ($request) {
+                return $header === '(request-target)'
+                    || $request->hasHeader($header)
+                    || ($header === 'date' && $request->hasHeader('x-date'));
+            })
+            ->toArray();
     }
 
     /**

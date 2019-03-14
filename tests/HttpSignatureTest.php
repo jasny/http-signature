@@ -614,7 +614,7 @@ class HttpSignatureTest extends TestCase
         $args = [$expectedMessage, $publicKey, 'ed25519-sha256'];
         $sign = $this->createCallbackMock($this->once(), $args, base64_decode($signature));
 
-        $requiredHeaders = ['(request-target)', strtolower($dateHeaderName), 'digest', 'content-length'];
+        $requiredHeaders = ['(request-target)', strtolower($dateHeaderName), 'digest', 'content-length', 'x-foo'];
 
         $service = (new HttpSignature(['ed25519', 'ed25519-sha256'], $sign, $verify))
             ->withRequiredHeaders('POST', $requiredHeaders);
