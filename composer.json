@@ -16,7 +16,7 @@
     },
     "require": {
         "php": ">=7.2.0",
-        "improved/improved": "^1.0",
+        "improved/improved": "^0.1.0",
         "nesbot/carbon": "^2.12",
         "psr/http-factory": "^1.0",
         "psr/http-message": "^1.0",
