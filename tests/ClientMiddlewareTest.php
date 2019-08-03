@@ -35,7 +35,7 @@ class ClientMiddlewareTest extends TestCase
     protected $middleware;
 
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->service = $this->createMock(HttpSignature::class);
         $this->middleware = new ClientMiddleware($this->service, 'key-1');
@@ -118,6 +118,27 @@ class ClientMiddlewareTest extends TestCase
         $expectedOptions = ['timeout' => 90, 'answer' => 42, 'handler' => $handlerStack];
         $actualOptions = array_intersect_key($history[0]['options'], $expectedOptions);
         $this->assertSame($expectedOptions, $actualOptions);
+    }
+
+    /**
+     * Test 'forGuzzle' method, if request already has Authorization header
+     */
+    public function testForGuzzleAuthorizationSet()
+    {
+        $options = ['foo'];
+        $request = $this->createMock(RequestInterface::class);
+        $processedRequest = $this->createMock(RequestInterface::class);
+        $handler = $this->createCallbackMock($this->once(), [$this->identicalTo($request), $options], $processedRequest);
+
+        $request->expects($this->once())->method('hasHeader')->with('Authorization')->willReturn(true);
+        $this->service->expects($this->never())->method('sign');
+
+        $handlerCallback = $this->middleware->forGuzzle();
+        $handlerRequest = $handlerCallback($handler);
+
+        $result = $handlerRequest($request, $options);
+
+        $this->assertSame($result, $processedRequest);
     }
 
     public function guzzleOptionsProvider()

@@ -37,7 +37,7 @@ class ServerMiddlewareTest extends TestCase
     protected $middleware;
 
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->service = $this->createMock(HttpSignature::class);
         $this->responseFactory = $this->createMock(ResponseFactoryInterface::class);

@@ -18,7 +18,7 @@ class HttpSignatureTest extends TestCase
 {
     use \Jasny\TestHelper;
 
-    public function setUp()
+    protected function setUp(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::createFromTimeString('Sat, 22 Aug 1981 20:51:35 +0000'));
     }
