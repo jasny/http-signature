@@ -396,7 +396,7 @@ class HttpSignature
             return; // Normally 'Date' should be a required header, so we shouldn't event get to this point.
         }
 
-        $date = CarbonImmutable::createFromTimeString($dateString);
+        $date = CarbonImmutable::instance(new \DateTime($dateString));
 
         if (abs(CarbonImmutable::now()->diffInSeconds($date)) > $this->clockSkew) {
             throw new HttpSignatureException("signature to old or system clocks out of sync");
