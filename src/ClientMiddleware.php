@@ -62,6 +62,10 @@ class ClientMiddleware
     {
         return function (callable $handler) {
             return function (RequestInterface $request, array $options) use ($handler) {
+                if ($request->hasHeader('Authorization')) {
+                    return $handler($request, $options);                    
+                }
+                
                 $keyId = array_key_exists('signature_key_id', $options) ? $options['signature_key_id'] : $this->keyId;
                 $nextRequest = $keyId !== null ? $this->service->sign($request, $keyId) : $request;
 
