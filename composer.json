@@ -25,7 +25,7 @@
     },
     "require-dev": {
         "guzzlehttp/guzzle": "^6.3",
-        "jasny/php-code-quality": "^2.4",
+        "jasny/php-code-quality": "2.4.*",
         "php-http/client-common": "^2.0",
         "php-http/mock-client": "^1.3"
     },
